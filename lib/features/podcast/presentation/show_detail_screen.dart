@@ -102,7 +102,7 @@ class ShowDetailScreen extends ConsumerWidget {
                           );
                           ref
                               .read(playbackQueueProvider.notifier)
-                              .addAll(show.episodes);
+                              .addShow(show);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('已加入播放列表')),
                           );
