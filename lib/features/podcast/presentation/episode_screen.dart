@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../cache/data/audio_cache_repository.dart';
+import '../../cache/domain/cached_episode.dart';
 import '../../player/data/playback_queue.dart';
 import '../../player/data/player_controller.dart';
 import '../../player/presentation/mini_player.dart';
@@ -18,6 +20,40 @@ class EpisodeScreen extends ConsumerStatefulWidget {
 
 class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
   bool _loading = false;
+  bool _checkingCache = true;
+  bool _caching = false;
+  CachedEpisode? _cachedEpisode;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCacheState();
+  }
+
+  Future<void> _loadCacheState() async {
+    try {
+      final cached = await ref
+          .read(audioCacheRepositoryProvider)
+          .cachedEpisode(widget.episode.id);
+      if (mounted) {
+        setState(() {
+          _cachedEpisode = cached;
+          _checkingCache = false;
+        });
+      }
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'load_cache_state',
+        error,
+        area: 'cache',
+        stackTrace: stackTrace,
+        data: {'episodeId': widget.episode.id},
+      );
+      if (mounted) {
+        setState(() => _checkingCache = false);
+      }
+    }
+  }
 
   Future<void> _play() async {
     setState(() => _loading = true);
@@ -38,6 +74,51 @@ class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _cacheEpisode() async {
+    setState(() => _caching = true);
+    try {
+      final cached = await ref
+          .read(audioCacheRepositoryProvider)
+          .cache(widget.episode);
+      if (mounted) {
+        setState(() => _cachedEpisode = cached);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
+      }
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'cache_episode',
+        error,
+        area: 'cache',
+        stackTrace: stackTrace,
+        data: {'episodeId': widget.episode.id, 'title': widget.episode.title},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _caching = false);
+    }
+  }
+
+  Future<void> _removeCache() async {
+    setState(() => _caching = true);
+    try {
+      await ref.read(audioCacheRepositoryProvider).remove(widget.episode.id);
+      if (mounted) {
+        setState(() => _cachedEpisode = null);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已删除缓存')));
+      }
+    } finally {
+      if (mounted) setState(() => _caching = false);
     }
   }
 
@@ -78,6 +159,16 @@ class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(episode.author ?? episode.sourceType.label),
+                if (_cachedEpisode != null) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Chip(
+                      avatar: const Icon(Icons.offline_pin, size: 18),
+                      label: Text('已缓存 ${_formatBytes(_cachedEpisode!.bytes)}'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 FilledButton.icon(
                   icon: _loading
@@ -90,6 +181,14 @@ class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
                     _loading ? '准备播放' : (isCurrent ? '正在播放' : '播放音频'),
                   ),
                   onPressed: _loading ? null : _play,
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: _cacheIcon(),
+                  label: Text(_cacheLabel()),
+                  onPressed: _checkingCache || _caching
+                      ? null
+                      : (_cachedEpisode == null ? _cacheEpisode : _removeCache),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
@@ -123,5 +222,33 @@ class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _cacheIcon() {
+    if (_checkingCache || _caching) {
+      return const SizedBox.square(
+        dimension: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    return Icon(_cachedEpisode == null ? Icons.download : Icons.delete_outline);
+  }
+
+  String _cacheLabel() {
+    if (_checkingCache) return '检查缓存';
+    if (_caching) {
+      return _cachedEpisode == null ? '缓存中' : '删除中';
+    }
+    if (_cachedEpisode == null) return '缓存到本地';
+    return '删除缓存 (${_formatBytes(_cachedEpisode!.bytes)})';
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    final kb = bytes / 1024;
+    if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
+    final mb = kb / 1024;
+    if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
+    return '${(mb / 1024).toStringAsFixed(1)} GB';
   }
 }

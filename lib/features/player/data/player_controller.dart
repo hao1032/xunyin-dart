@@ -6,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 
 import '../../../core/logging/app_logger.dart';
 import '../../bilibili/data/bilibili_repository.dart';
+import '../../cache/data/audio_cache_repository.dart';
 import '../../library/data/library_repository.dart';
 import '../../podcast/domain/episode.dart';
 import '../../podcast/domain/source_type.dart';
@@ -22,6 +23,7 @@ final playbackControllerProvider = Provider<PlaybackController>((ref) {
   return PlaybackController(
     ref.watch(appAudioPlayerProvider),
     ref.watch(bilibiliRepositoryProvider),
+    ref.watch(audioCacheRepositoryProvider),
     ref.watch(libraryRepositoryProvider),
     ref.watch(playbackQueueProvider.notifier),
   );
@@ -31,12 +33,14 @@ class PlaybackController {
   const PlaybackController(
     this._player,
     this._bilibiliRepository,
+    this._cacheRepository,
     this._library,
     this._queue,
   );
 
   final AudioPlayer _player;
   final BilibiliRepository _bilibiliRepository;
+  final AudioCacheRepository _cacheRepository;
   final LibraryRepository _library;
   final PlaybackQueueController? _queue;
 
@@ -57,6 +61,28 @@ class PlaybackController {
     _queue?.playNow(episode);
     final session = await AudioSession.instance;
     await session.configure(const AudioSessionConfiguration.speech());
+    final cachedPath = await _cacheRepository.localPathFor(episode);
+    if (cachedPath != null) {
+      await _player.setFilePath(cachedPath);
+      await _library.recordPlayback(episode);
+      unawaited(
+        _player.play().catchError((Object error, StackTrace stackTrace) {
+          AppLogger.failure(
+            'play_cached_episode',
+            error,
+            area: 'player',
+            stackTrace: stackTrace,
+            data: {'episodeId': episode.id, 'title': episode.title},
+          );
+        }),
+      );
+      AppLogger.result(
+        'play_cached_episode',
+        area: 'player',
+        data: {'episodeId': episode.id, 'path': cachedPath},
+      );
+      return;
+    }
     final audioUrl = await _audioUrlFor(episode);
     AppLogger.result(
       'prepare_audio',

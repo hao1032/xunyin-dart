@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/podcast/domain/episode.dart';
 import '../../features/podcast/domain/podcast_show.dart';
+import '../../features/cache/domain/cached_episode.dart';
 import 'app_json_store.dart';
 
 final libraryStoreProvider = Provider<LibraryStore>((ref) {
@@ -15,6 +16,7 @@ class LibraryStore {
 
   static const _subscriptionsFileName = 'subscriptions.json';
   static const _historyFileName = 'history.json';
+  static const _cacheFileName = 'cached_episodes.json';
 
   final AppJsonStore _jsonStore;
 
@@ -60,6 +62,34 @@ class LibraryStore {
     await _saveHistory(data);
   }
 
+  Future<List<CachedEpisode>> loadCachedEpisodes() async {
+    final data = await _loadCache();
+    return _decodeList(data['episodes']).map(CachedEpisode.fromJson).toList();
+  }
+
+  Future<void> saveCachedEpisode(CachedEpisode cached) async {
+    final data = await _loadCache();
+    final episodes = _decodeList(
+      data['episodes'],
+    ).map(CachedEpisode.fromJson).toList();
+    final next = [
+      cached,
+      ...episodes.where((item) => item.episode.id != cached.episode.id),
+    ];
+    data['episodes'] = next.map((item) => item.toJson()).toList();
+    await _saveCache(data);
+  }
+
+  Future<void> removeCachedEpisode(String episodeId) async {
+    final data = await _loadCache();
+    final episodes = _decodeList(data['episodes'])
+        .map(CachedEpisode.fromJson)
+        .where((item) => item.episode.id != episodeId)
+        .toList();
+    data['episodes'] = episodes.map((item) => item.toJson()).toList();
+    await _saveCache(data);
+  }
+
   Future<Map<String, Object?>> _loadSubscriptions() {
     return _jsonStore.readObject(
       _subscriptionsFileName,
@@ -74,6 +104,13 @@ class LibraryStore {
     );
   }
 
+  Future<Map<String, Object?>> _loadCache() {
+    return _jsonStore.readObject(
+      _cacheFileName,
+      fallback: {'version': 1, 'episodes': <Object?>[]},
+    );
+  }
+
   Future<void> _saveSubscriptions(Map<String, Object?> data) {
     data['version'] = 1;
     data.putIfAbsent('subscriptions', () => <Object?>[]);
@@ -84,6 +121,12 @@ class LibraryStore {
     data['version'] = 1;
     data.putIfAbsent('history', () => <Object?>[]);
     return _jsonStore.writeObject(_historyFileName, data);
+  }
+
+  Future<void> _saveCache(Map<String, Object?> data) {
+    data['version'] = 1;
+    data.putIfAbsent('episodes', () => <Object?>[]);
+    return _jsonStore.writeObject(_cacheFileName, data);
   }
 
   List<Map<String, Object?>> _decodeList(Object? raw) {

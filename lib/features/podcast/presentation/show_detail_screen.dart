@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../cache/data/audio_cache_repository.dart';
 import '../../library/data/library_repository.dart';
 import '../../player/data/playback_queue.dart';
 import '../../player/data/player_controller.dart';
@@ -23,11 +24,14 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   bool _subscribing = false;
   bool _checkingSubscription = true;
   bool _subscribed = false;
+  final Set<String> _cachedEpisodeIds = {};
+  final Set<String> _busyEpisodeIds = {};
 
   @override
   void initState() {
     super.initState();
     _loadSubscriptionState();
+    _loadCacheState();
   }
 
   Future<void> _loadSubscriptionState() async {
@@ -52,6 +56,29 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
       if (mounted) {
         setState(() => _checkingSubscription = false);
       }
+    }
+  }
+
+  Future<void> _loadCacheState() async {
+    try {
+      final cached = await ref
+          .read(audioCacheRepositoryProvider)
+          .cachedEpisodes();
+      if (mounted) {
+        setState(() {
+          _cachedEpisodeIds
+            ..clear()
+            ..addAll(cached.map((item) => item.episode.id));
+        });
+      }
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'load_show_cache_state',
+        error,
+        area: 'cache',
+        stackTrace: stackTrace,
+        data: {'showId': widget.show.id},
+      );
     }
   }
 
@@ -110,6 +137,47 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    }
+  }
+
+  Future<void> _toggleCache(Episode episode) async {
+    if (_busyEpisodeIds.contains(episode.id)) return;
+    setState(() => _busyEpisodeIds.add(episode.id));
+    try {
+      if (_cachedEpisodeIds.contains(episode.id)) {
+        await ref.read(audioCacheRepositoryProvider).remove(episode.id);
+        if (mounted) {
+          setState(() => _cachedEpisodeIds.remove(episode.id));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('已删除缓存')));
+        }
+      } else {
+        await ref.read(audioCacheRepositoryProvider).cache(episode);
+        if (mounted) {
+          setState(() => _cachedEpisodeIds.add(episode.id));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
+        }
+      }
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'toggle_show_episode_cache',
+        error,
+        area: 'cache',
+        stackTrace: stackTrace,
+        data: {'episodeId': episode.id, 'title': episode.title},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busyEpisodeIds.remove(episode.id));
       }
     }
   }
@@ -223,13 +291,48 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                   final episodeQueued = queue.items.any(
                     (item) => item.containsEpisode(episode.id),
                   );
+                  final cached = _cachedEpisodeIds.contains(episode.id);
+                  final busy = _busyEpisodeIds.contains(episode.id);
                   return Card(
                     child: ListTile(
                       title: Text(episode.title),
-                      subtitle: Text(episode.author ?? show.title),
+                      subtitle: Text(
+                        cached
+                            ? '已缓存 · ${episode.author ?? show.title}'
+                            : (episode.author ?? show.title),
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          IconButton(
+                            tooltip: cached ? '已缓存，点击删除' : '缓存到本地',
+                            icon: busy
+                                ? const SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Icon(
+                                    cached
+                                        ? Icons.offline_pin
+                                        : Icons.download_outlined,
+                                  ),
+                            onPressed: busy
+                                ? null
+                                : () {
+                                    AppLogger.userAction(
+                                      'toggle_episode_cache',
+                                      area: 'cache',
+                                      data: {
+                                        'episodeId': episode.id,
+                                        'title': episode.title,
+                                        'cached': cached,
+                                      },
+                                    );
+                                    _toggleCache(episode);
+                                  },
+                          ),
                           IconButton(
                             tooltip: '播放试听',
                             icon: const Icon(Icons.play_arrow),
