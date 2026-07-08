@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
 import '../../podcast/domain/episode.dart';
@@ -8,7 +9,9 @@ import '../data/player_controller.dart';
 import 'mini_player.dart';
 
 class QueueScreen extends ConsumerWidget {
-  const QueueScreen({super.key});
+  const QueueScreen({super.key, this.showMiniPlayer = true});
+
+  final bool showMiniPlayer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,6 +38,21 @@ class QueueScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Card(
+              child: ListTile(
+                leading: const Icon(Icons.subscriptions_outlined),
+                title: const Text('订阅记录'),
+                subtitle: const Text('查看已订阅内容和播放历史'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  AppLogger.userAction('open_library', area: 'library');
+                  context.push('/library');
+                },
+              ),
+            ),
+          ),
           Expanded(
             child: queue.items.isEmpty
                 ? const Center(child: Text('播放列表为空'))
@@ -155,7 +173,7 @@ class QueueScreen extends ConsumerWidget {
                     },
                   ),
           ),
-          const MiniPlayer(),
+          if (showMiniPlayer) const MiniPlayer(),
         ],
       ),
     );

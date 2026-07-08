@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
@@ -77,7 +79,17 @@ class PlaybackController {
       await _player.setUrl(audioUrl);
     }
     await _library.recordPlayback(episode);
-    await _player.play();
+    unawaited(
+      _player.play().catchError((Object error, StackTrace stackTrace) {
+        AppLogger.failure(
+          'play_episode',
+          error,
+          area: 'player',
+          stackTrace: stackTrace,
+          data: {'episodeId': episode.id, 'title': episode.title},
+        );
+      }),
+    );
     AppLogger.result(
       'play_episode',
       area: 'player',

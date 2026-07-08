@@ -44,6 +44,11 @@ class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
   @override
   Widget build(BuildContext context) {
     final episode = widget.episode;
+    final queue = ref.watch(playbackQueueProvider);
+    final isQueued = queue.items.any(
+      (item) => item.containsEpisode(episode.id),
+    );
+    final isCurrent = queue.current?.id == episode.id;
     return Scaffold(
       appBar: AppBar(title: Text(episode.sourceType.label)),
       body: Column(
@@ -80,25 +85,32 @@ class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
                           dimension: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.play_arrow),
-                  label: Text(_loading ? '准备播放' : '播放音频'),
+                      : Icon(isCurrent ? Icons.graphic_eq : Icons.play_arrow),
+                  label: Text(
+                    _loading ? '准备播放' : (isCurrent ? '正在播放' : '播放音频'),
+                  ),
                   onPressed: _loading ? null : _play,
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.playlist_add),
-                  label: const Text('加入播放列表'),
-                  onPressed: () {
-                    AppLogger.userAction(
-                      'add_episode_to_queue',
-                      area: 'player',
-                      data: {'episodeId': episode.id, 'title': episode.title},
-                    );
-                    ref.read(playbackQueueProvider.notifier).add(episode);
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('已加入播放列表')));
-                  },
+                  icon: Icon(isQueued ? Icons.check : Icons.playlist_add),
+                  label: Text(isQueued ? '已加入播放列表' : '加入播放列表'),
+                  onPressed: isQueued
+                      ? null
+                      : () {
+                          AppLogger.userAction(
+                            'add_episode_to_queue',
+                            area: 'player',
+                            data: {
+                              'episodeId': episode.id,
+                              'title': episode.title,
+                            },
+                          );
+                          ref.read(playbackQueueProvider.notifier).add(episode);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('已加入播放列表')),
+                          );
+                        },
                 ),
                 if (episode.description != null) ...[
                   const SizedBox(height: 20),

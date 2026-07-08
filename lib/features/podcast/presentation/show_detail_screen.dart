@@ -5,48 +5,122 @@ import 'package:go_router/go_router.dart';
 import '../../../core/logging/app_logger.dart';
 import '../../library/data/library_repository.dart';
 import '../../player/data/playback_queue.dart';
+import '../../player/data/player_controller.dart';
 import '../../player/presentation/mini_player.dart';
+import '../domain/episode.dart';
 import '../domain/podcast_show.dart';
 
-class ShowDetailScreen extends ConsumerWidget {
+class ShowDetailScreen extends ConsumerStatefulWidget {
   const ShowDetailScreen({super.key, required this.show});
 
   final PodcastShow show;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShowDetailScreen> createState() => _ShowDetailScreenState();
+}
+
+class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
+  bool _subscribing = false;
+  bool _checkingSubscription = true;
+  bool _subscribed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSubscriptionState();
+  }
+
+  Future<void> _loadSubscriptionState() async {
+    try {
+      final subscribed = await ref
+          .read(libraryRepositoryProvider)
+          .isSubscribed(widget.show.id);
+      if (mounted) {
+        setState(() {
+          _checkingSubscription = false;
+          _subscribed = subscribed;
+        });
+      }
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'load_subscription_state',
+        error,
+        area: 'library',
+        stackTrace: stackTrace,
+        data: {'showId': widget.show.id},
+      );
+      if (mounted) {
+        setState(() => _checkingSubscription = false);
+      }
+    }
+  }
+
+  Future<void> _subscribe() async {
+    if (_subscribing || _subscribed) return;
+    final show = widget.show;
+    setState(() => _subscribing = true);
+    try {
+      AppLogger.userAction(
+        'subscribe_show',
+        area: 'library',
+        data: {
+          'showId': show.id,
+          'title': show.title,
+          'episodeCount': show.episodes.length,
+        },
+      );
+      await ref.read(libraryRepositoryProvider).subscribe(show);
+      AppLogger.result(
+        'subscribe_show',
+        area: 'library',
+        data: {'showId': show.id, 'title': show.title},
+      );
+      if (mounted) {
+        setState(() => _subscribed = true);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已加入订阅')));
+      }
+    } finally {
+      if (mounted) setState(() => _subscribing = false);
+    }
+  }
+
+  Future<void> _playEpisode(Episode episode) async {
+    AppLogger.userAction(
+      'play_episode_from_show',
+      area: 'player',
+      data: {
+        'episodeId': episode.id,
+        'title': episode.title,
+        'showId': widget.show.id,
+      },
+    );
+    try {
+      await ref.read(playbackControllerProvider).play(episode);
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'play_episode_from_show',
+        error,
+        area: 'player',
+        stackTrace: stackTrace,
+        data: {'episodeId': episode.id, 'showId': widget.show.id},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final show = widget.show;
+    final queue = ref.watch(playbackQueueProvider);
+    final isQueued = queue.items.any((item) => item.id == show.id);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(show.sourceType.label),
-        actions: [
-          IconButton(
-            tooltip: '订阅',
-            icon: const Icon(Icons.add_circle_outline),
-            onPressed: () async {
-              AppLogger.userAction(
-                'subscribe_show',
-                area: 'library',
-                data: {
-                  'showId': show.id,
-                  'title': show.title,
-                  'episodeCount': show.episodes.length,
-                },
-              );
-              await ref.read(libraryRepositoryProvider).subscribe(show);
-              AppLogger.result(
-                'subscribe_show',
-                area: 'library',
-                data: {'showId': show.id, 'title': show.title},
-              );
-              if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('已加入订阅')));
-              }
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(show.sourceType.label)),
       body: Column(
         children: [
           Expanded(
@@ -85,55 +159,108 @@ class ShowDetailScreen extends ConsumerWidget {
                   ),
                 ],
                 const SizedBox(height: 20),
-                FilledButton.icon(
-                  icon: const Icon(Icons.playlist_add),
-                  label: const Text('加入播放列表'),
-                  onPressed: show.episodes.isEmpty
-                      ? null
-                      : () {
-                          AppLogger.userAction(
-                            'add_show_to_queue',
-                            area: 'player',
-                            data: {
-                              'showId': show.id,
-                              'title': show.title,
-                              'episodeCount': show.episodes.length,
-                            },
-                          );
-                          ref
-                              .read(playbackQueueProvider.notifier)
-                              .addShow(show);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('已加入播放列表')),
-                          );
-                        },
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        icon: Icon(isQueued ? Icons.check : Icons.playlist_add),
+                        label: Text(isQueued ? '已加入播放列表' : '加入播放列表'),
+                        onPressed: show.episodes.isEmpty || isQueued
+                            ? null
+                            : () {
+                                AppLogger.userAction(
+                                  'add_show_to_queue',
+                                  area: 'player',
+                                  data: {
+                                    'showId': show.id,
+                                    'title': show.title,
+                                    'episodeCount': show.episodes.length,
+                                  },
+                                );
+                                ref
+                                    .read(playbackQueueProvider.notifier)
+                                    .addShow(show);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('已加入播放列表')),
+                                );
+                              },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: _checkingSubscription || _subscribing
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                _subscribed
+                                    ? Icons.check
+                                    : Icons.add_circle_outline,
+                              ),
+                        label: Text(
+                          _checkingSubscription
+                              ? '检查中'
+                              : (_subscribing
+                                    ? '订阅中'
+                                    : (_subscribed ? '已订阅' : '订阅')),
+                        ),
+                        onPressed:
+                            _checkingSubscription || _subscribing || _subscribed
+                            ? null
+                            : _subscribe,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 20),
                 Text('单集', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 ...show.episodes.map((episode) {
+                  final episodeQueued = queue.items.any(
+                    (item) => item.containsEpisode(episode.id),
+                  );
                   return Card(
                     child: ListTile(
                       title: Text(episode.title),
                       subtitle: Text(episode.author ?? show.title),
-                      trailing: IconButton(
-                        tooltip: '加入播放列表',
-                        icon: const Icon(Icons.playlist_add),
-                        onPressed: () {
-                          AppLogger.userAction(
-                            'add_episode_to_queue',
-                            area: 'player',
-                            data: {
-                              'episodeId': episode.id,
-                              'title': episode.title,
-                              'showId': show.id,
-                            },
-                          );
-                          ref.read(playbackQueueProvider.notifier).add(episode);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('已加入播放列表')),
-                          );
-                        },
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: '播放试听',
+                            icon: const Icon(Icons.play_arrow),
+                            onPressed: () => _playEpisode(episode),
+                          ),
+                          IconButton(
+                            tooltip: episodeQueued ? '已加入播放列表' : '加入播放列表',
+                            icon: Icon(
+                              episodeQueued ? Icons.check : Icons.playlist_add,
+                            ),
+                            onPressed: episodeQueued
+                                ? null
+                                : () {
+                                    AppLogger.userAction(
+                                      'add_episode_to_queue',
+                                      area: 'player',
+                                      data: {
+                                        'episodeId': episode.id,
+                                        'title': episode.title,
+                                        'showId': show.id,
+                                      },
+                                    );
+                                    ref
+                                        .read(playbackQueueProvider.notifier)
+                                        .add(episode);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('已加入播放列表')),
+                                    );
+                                  },
+                          ),
+                        ],
                       ),
                       onTap: () {
                         AppLogger.userAction(

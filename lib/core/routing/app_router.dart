@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/home/presentation/main_tab_screen.dart';
 import '../../features/library/presentation/library_screen.dart';
 import '../../features/podcast/domain/episode.dart';
 import '../../features/podcast/domain/podcast_show.dart';
 import '../../features/podcast/presentation/episode_screen.dart';
+import '../../features/player/presentation/player_screen.dart';
 import '../../features/podcast/presentation/show_detail_screen.dart';
 import '../../features/player/presentation/queue_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
@@ -12,12 +14,14 @@ import '../../features/search/presentation/search_screen.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const SearchScreen()),
+    GoRoute(path: '/', builder: (context, state) => const MainTabScreen()),
+    GoRoute(path: '/search', builder: (context, state) => const SearchScreen()),
     GoRoute(
       path: '/library',
       builder: (context, state) => const LibraryScreen(),
     ),
     GoRoute(path: '/queue', builder: (context, state) => const QueueScreen()),
+    GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),
     GoRoute(
       path: '/show',
       builder: (context, state) {

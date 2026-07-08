@@ -1,69 +1,94 @@
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/podcast/domain/episode.dart';
 import '../../features/podcast/domain/podcast_show.dart';
+import 'app_json_store.dart';
 
-final libraryStoreProvider = Provider<LibraryStore>((ref) => LibraryStore());
+final libraryStoreProvider = Provider<LibraryStore>((ref) {
+  return LibraryStore(ref.watch(appJsonStoreProvider));
+});
 
 class LibraryStore {
-  static const _subscriptionsKey = 'subscriptions';
-  static const _historyKey = 'history';
+  const LibraryStore(this._jsonStore);
+
+  static const _subscriptionsFileName = 'subscriptions.json';
+  static const _historyFileName = 'history.json';
+
+  final AppJsonStore _jsonStore;
 
   Future<List<PodcastShow>> loadSubscriptions() async {
-    final prefs = await SharedPreferences.getInstance();
+    final data = await _loadSubscriptions();
     return _decodeList(
-      prefs.getString(_subscriptionsKey),
+      data['subscriptions'],
     ).map(PodcastShow.fromJson).toList();
   }
 
   Future<void> saveSubscription(PodcastShow show) async {
-    final shows = await loadSubscriptions();
+    final data = await _loadSubscriptions();
+    final shows = _decodeList(
+      data['subscriptions'],
+    ).map(PodcastShow.fromJson).toList();
     final next = [show, ...shows.where((item) => item.id != show.id)];
-    await _saveShows(_subscriptionsKey, next);
+    data['subscriptions'] = next.map((item) => item.toJson()).toList();
+    await _saveSubscriptions(data);
   }
 
   Future<void> removeSubscription(String showId) async {
-    final shows = await loadSubscriptions();
-    await _saveShows(
-      _subscriptionsKey,
-      shows.where((item) => item.id != showId),
-    );
+    final data = await _loadSubscriptions();
+    final shows = _decodeList(
+      data['subscriptions'],
+    ).map(PodcastShow.fromJson).where((item) => item.id != showId).toList();
+    data['subscriptions'] = shows.map((item) => item.toJson()).toList();
+    await _saveSubscriptions(data);
   }
 
   Future<List<Episode>> loadHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    return _decodeList(
-      prefs.getString(_historyKey),
-    ).map(Episode.fromJson).toList();
+    final data = await _loadHistory();
+    return _decodeList(data['history']).map(Episode.fromJson).toList();
   }
 
   Future<void> addHistory(Episode episode) async {
-    final history = await loadHistory();
+    final data = await _loadHistory();
+    final history = _decodeList(data['history']).map(Episode.fromJson).toList();
     final next = [
       episode,
       ...history.where((item) => item.id != episode.id),
     ].take(50).toList();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _historyKey,
-      jsonEncode(next.map((item) => item.toJson()).toList()),
+    data['history'] = next.map((item) => item.toJson()).toList();
+    await _saveHistory(data);
+  }
+
+  Future<Map<String, Object?>> _loadSubscriptions() {
+    return _jsonStore.readObject(
+      _subscriptionsFileName,
+      fallback: {'version': 1, 'subscriptions': <Object?>[]},
     );
   }
 
-  Future<void> _saveShows(String key, Iterable<PodcastShow> shows) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      key,
-      jsonEncode(shows.map((item) => item.toJson()).toList()),
+  Future<Map<String, Object?>> _loadHistory() {
+    return _jsonStore.readObject(
+      _historyFileName,
+      fallback: {'version': 1, 'history': <Object?>[]},
     );
   }
 
-  List<Map<String, Object?>> _decodeList(String? raw) {
-    if (raw == null || raw.isEmpty) return const [];
-    final decoded = jsonDecode(raw);
+  Future<void> _saveSubscriptions(Map<String, Object?> data) {
+    data['version'] = 1;
+    data.putIfAbsent('subscriptions', () => <Object?>[]);
+    return _jsonStore.writeObject(_subscriptionsFileName, data);
+  }
+
+  Future<void> _saveHistory(Map<String, Object?> data) {
+    data['version'] = 1;
+    data.putIfAbsent('history', () => <Object?>[]);
+    return _jsonStore.writeObject(_historyFileName, data);
+  }
+
+  List<Map<String, Object?>> _decodeList(Object? raw) {
+    if (raw == null) return const [];
+    final decoded = raw is String ? jsonDecode(raw) : raw;
     if (decoded is! List) return const [];
     return decoded.whereType<Map>().map((item) {
       return item.cast<String, Object?>();

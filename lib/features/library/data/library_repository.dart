@@ -16,6 +16,11 @@ class LibraryRepository {
 
   Future<List<PodcastShow>> subscriptions() => _store.loadSubscriptions();
 
+  Future<bool> isSubscribed(String showId) async {
+    final shows = await subscriptions();
+    return shows.any((show) => show.id == showId);
+  }
+
   Future<void> subscribe(PodcastShow show) async {
     await _store.saveSubscription(show);
     AppLogger.result(

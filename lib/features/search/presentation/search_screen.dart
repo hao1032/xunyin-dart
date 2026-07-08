@@ -11,7 +11,14 @@ import '../data/search_repository.dart';
 import '../domain/search_result.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({
+    super.key,
+    this.showMiniPlayer = true,
+    this.showLibraryAction = true,
+  });
+
+  final bool showMiniPlayer;
+  final bool showLibraryAction;
 
   @override
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
@@ -145,16 +152,18 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('寻音'),
-        actions: [
-          IconButton(
-            tooltip: '资料库',
-            icon: const Icon(Icons.library_music_outlined),
-            onPressed: () {
-              AppLogger.userAction('open_library', area: 'library');
-              context.push('/library');
-            },
-          ),
-        ],
+        actions: widget.showLibraryAction
+            ? [
+                IconButton(
+                  tooltip: '资料库',
+                  icon: const Icon(Icons.library_music_outlined),
+                  onPressed: () {
+                    AppLogger.userAction('open_library', area: 'library');
+                    context.push('/library');
+                  },
+                ),
+              ]
+            : null,
       ),
       body: Column(
         children: [
@@ -226,7 +235,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               loading: () => const Center(child: CircularProgressIndicator()),
             ),
           ),
-          const MiniPlayer(),
+          if (widget.showMiniPlayer) const MiniPlayer(),
         ],
       ),
     );

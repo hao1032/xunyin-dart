@@ -23,64 +23,55 @@ class MiniPlayer extends ConsumerWidget {
           color: Theme.of(context).colorScheme.surface,
           child: SafeArea(
             top: false,
-            child: SizedBox(
-              height: 92,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 16),
-                        Icon(playing ? Icons.graphic_eq : Icons.podcasts),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
+            child: InkWell(
+              onTap: () {
+                AppLogger.userAction('open_player_from_mini', area: 'player');
+                context.push('/player');
+              },
+              child: SizedBox(
+                height: 64,
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    Icon(playing ? Icons.graphic_eq : Icons.podcasts),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
                             queue.current?.title ?? '播放器',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        IconButton(
-                          tooltip: '播放列表',
-                          icon: Badge.count(
-                            count: queue.items.length,
-                            isLabelVisible: queue.items.isNotEmpty,
-                            child: const Icon(Icons.queue_music),
-                          ),
-                          onPressed: () {
-                            AppLogger.userAction(
-                              'open_queue',
-                              area: 'player',
-                              data: {'queueCount': queue.items.length},
-                            );
-                            context.push('/queue');
-                          },
-                        ),
-                        IconButton(
-                          tooltip: playing ? '暂停' : '播放',
-                          icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                          onPressed: () {
-                            AppLogger.userAction(
-                              playing
-                                  ? 'pause_from_mini_player'
-                                  : 'play_from_mini_player',
-                              area: 'player',
-                            );
-                            playing ? player.pause() : player.play();
-                            AppLogger.result(
-                              playing
-                                  ? 'pause_from_mini_player'
-                                  : 'play_from_mini_player',
-                              area: 'player',
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                      ],
+                          const SizedBox(height: 2),
+                          _MiniPlayerTime(player: player),
+                        ],
+                      ),
                     ),
-                  ),
-                  _MiniPlayerProgress(player: player),
-                ],
+                    IconButton(
+                      tooltip: playing ? '暂停' : '播放',
+                      icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+                      onPressed: () {
+                        AppLogger.userAction(
+                          playing
+                              ? 'pause_from_mini_player'
+                              : 'play_from_mini_player',
+                          area: 'player',
+                        );
+                        playing ? player.pause() : player.play();
+                        AppLogger.result(
+                          playing
+                              ? 'pause_from_mini_player'
+                              : 'play_from_mini_player',
+                          area: 'player',
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
               ),
             ),
           ),
@@ -90,8 +81,8 @@ class MiniPlayer extends ConsumerWidget {
   }
 }
 
-class _MiniPlayerProgress extends StatelessWidget {
-  const _MiniPlayerProgress({required this.player});
+class _MiniPlayerTime extends StatelessWidget {
+  const _MiniPlayerTime({required this.player});
 
   final AudioPlayer player;
 
@@ -105,55 +96,14 @@ class _MiniPlayerProgress extends StatelessWidget {
           builder: (context, durationSnapshot) {
             final position = positionSnapshot.data ?? Duration.zero;
             final duration = durationSnapshot.data;
-            final maxMs = duration?.inMilliseconds ?? 0;
-            final positionMs = position.inMilliseconds.clamp(0, maxMs);
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 42,
-                    child: Text(
-                      _formatDuration(position),
-                      textAlign: TextAlign.right,
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ),
-                  Expanded(
-                    child: Slider(
-                      min: 0,
-                      max: maxMs <= 0 ? 1 : maxMs.toDouble(),
-                      value: maxMs <= 0 ? 0 : positionMs.toDouble(),
-                      onChanged: maxMs <= 0
-                          ? null
-                          : (value) {
-                              player.seek(
-                                Duration(milliseconds: value.round()),
-                              );
-                            },
-                      onChangeEnd: maxMs <= 0
-                          ? null
-                          : (value) {
-                              AppLogger.userAction(
-                                'seek_from_mini_player',
-                                area: 'player',
-                                data: {
-                                  'positionMs': value.round(),
-                                  'durationMs': maxMs,
-                                },
-                              );
-                            },
-                    ),
-                  ),
-                  SizedBox(
-                    width: 42,
-                    child: Text(
-                      duration == null ? '--:--' : _formatDuration(duration),
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ),
-                ],
-              ),
+            final text = duration == null
+                ? _formatDuration(position)
+                : '${_formatDuration(position)} / ${_formatDuration(duration)}';
+            return Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall,
             );
           },
         );

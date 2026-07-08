@@ -41,7 +41,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('资料库')),
+      appBar: AppBar(title: const Text('订阅记录')),
       body: Column(
         children: [
           Expanded(
