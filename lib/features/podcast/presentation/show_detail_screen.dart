@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../../core/text/plain_text.dart';
 import '../../bilibili/data/bilibili_repository.dart';
 import '../../cache/data/audio_cache_repository.dart';
 import '../../library/data/library_repository.dart';
@@ -231,24 +232,15 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
   Future<void> _toggleCache(Episode episode) async {
     if (_busyEpisodeIds.contains(episode.id)) return;
+    if (_cachedEpisodeIds.contains(episode.id)) return;
     setState(() => _busyEpisodeIds.add(episode.id));
     try {
-      if (_cachedEpisodeIds.contains(episode.id)) {
-        await ref.read(audioCacheRepositoryProvider).remove(episode.id);
-        if (mounted) {
-          setState(() => _cachedEpisodeIds.remove(episode.id));
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('已删除缓存')));
-        }
-      } else {
-        await ref.read(audioCacheRepositoryProvider).cache(episode);
-        if (mounted) {
-          setState(() => _cachedEpisodeIds.add(episode.id));
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
-        }
+      await ref.read(audioCacheRepositoryProvider).cache(episode);
+      if (mounted) {
+        setState(() => _cachedEpisodeIds.add(episode.id));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
@@ -279,6 +271,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     final episodes = loadingEpisodes ? const <Episode>[] : show.episodes;
     final queue = ref.watch(playbackQueueProvider);
     final isQueued = queue.items.any((item) => item.id == show.id);
+    final isCreatorShow = _isBilibiliCreatorShow(show);
+    final description = plainTextOrNull(show.description);
     return Scaffold(
       appBar: AppBar(title: Text(show.sourceType.label)),
       body: Column(
@@ -290,7 +284,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ShowCover(url: show.imageUrl),
+                    _ShowCover(url: show.imageUrl, circular: isCreatorShow),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -302,7 +296,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(show.author ?? show.sourceType.label),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Text(
                             loadingEpisodes ? '加载中' : '${episodes.length} 集',
                           ),
@@ -311,73 +305,61 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                     ),
                   ],
                 ),
-                if (show.description != null &&
-                    show.description!.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    IconButton(
+                      tooltip: isQueued ? '已加入播放列表' : '加入播放列表',
+                      icon: Icon(isQueued ? Icons.check : Icons.playlist_add),
+                      onPressed: episodes.isEmpty || isQueued
+                          ? null
+                          : () {
+                              AppLogger.userAction(
+                                'add_show_to_queue',
+                                area: 'player',
+                                data: {
+                                  'showId': show.id,
+                                  'title': show.title,
+                                  'episodeCount': episodes.length,
+                                },
+                              );
+                              ref
+                                  .read(playbackQueueProvider.notifier)
+                                  .addShow(show);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('已加入播放列表')),
+                              );
+                            },
+                    ),
+                    FilledButton.tonalIcon(
+                      icon: _checkingSubscription || _subscribing
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              _subscribed
+                                  ? Icons.notifications_active_outlined
+                                  : Icons.notifications_none,
+                            ),
+                      label: Text(_subscriptionTooltip()),
+                      onPressed:
+                          _checkingSubscription || _subscribing || _subscribed
+                          ? null
+                          : _subscribe,
+                    ),
+                  ],
+                ),
+                if (description != null) ...[
+                  const SizedBox(height: 12),
                   Text(
-                    show.description!,
+                    description,
                     maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        icon: Icon(isQueued ? Icons.check : Icons.playlist_add),
-                        label: Text(isQueued ? '已加入播放列表' : '加入播放列表'),
-                        onPressed: episodes.isEmpty || isQueued
-                            ? null
-                            : () {
-                                AppLogger.userAction(
-                                  'add_show_to_queue',
-                                  area: 'player',
-                                  data: {
-                                    'showId': show.id,
-                                    'title': show.title,
-                                    'episodeCount': episodes.length,
-                                  },
-                                );
-                                ref
-                                    .read(playbackQueueProvider.notifier)
-                                    .addShow(show);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('已加入播放列表')),
-                                );
-                              },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: _checkingSubscription || _subscribing
-                            ? const SizedBox.square(
-                                dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Icon(
-                                _subscribed
-                                    ? Icons.check
-                                    : Icons.add_circle_outline,
-                              ),
-                        label: Text(
-                          _checkingSubscription
-                              ? '检查中'
-                              : (_subscribing
-                                    ? '订阅中'
-                                    : (_subscribed ? '已订阅' : '订阅')),
-                        ),
-                        onPressed:
-                            _checkingSubscription || _subscribing || _subscribed
-                            ? null
-                            : _subscribe,
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 20),
                 Text('单集', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
@@ -416,75 +398,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                   );
                   final cached = _cachedEpisodeIds.contains(episode.id);
                   final busy = _busyEpisodeIds.contains(episode.id);
-                  final subtitle = _episodeSubtitle(episode, cached);
                   return Card(
-                    child: ListTile(
-                      title: Text(episode.title),
-                      subtitle: subtitle == null ? null : Text(subtitle),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: cached ? '已缓存，点击删除' : '缓存到本地',
-                            icon: busy
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Icon(
-                                    cached
-                                        ? Icons.offline_pin
-                                        : Icons.download_outlined,
-                                  ),
-                            onPressed: busy
-                                ? null
-                                : () {
-                                    AppLogger.userAction(
-                                      'toggle_episode_cache',
-                                      area: 'cache',
-                                      data: {
-                                        'episodeId': episode.id,
-                                        'title': episode.title,
-                                        'cached': cached,
-                                      },
-                                    );
-                                    _toggleCache(episode);
-                                  },
-                          ),
-                          IconButton(
-                            tooltip: '播放试听',
-                            icon: const Icon(Icons.play_arrow),
-                            onPressed: () => _playEpisode(episode),
-                          ),
-                          IconButton(
-                            tooltip: episodeQueued ? '已加入播放列表' : '加入播放列表',
-                            icon: Icon(
-                              episodeQueued ? Icons.check : Icons.playlist_add,
-                            ),
-                            onPressed: episodeQueued
-                                ? null
-                                : () {
-                                    AppLogger.userAction(
-                                      'add_episode_to_queue',
-                                      area: 'player',
-                                      data: {
-                                        'episodeId': episode.id,
-                                        'title': episode.title,
-                                        'showId': show.id,
-                                      },
-                                    );
-                                    ref
-                                        .read(playbackQueueProvider.notifier)
-                                        .add(episode);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('已加入播放列表')),
-                                    );
-                                  },
-                          ),
-                        ],
-                      ),
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
                       onTap: () {
                         AppLogger.userAction(
                           'open_episode',
@@ -503,6 +420,93 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           ),
                         );
                       },
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            _EpisodeCover(url: episode.imageUrl),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    episode.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          _episodeSubtitle(episode) ?? '',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                              ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _EpisodeActions(
+                                        cached: cached,
+                                        busy: busy,
+                                        queued: episodeQueued,
+                                        onToggleCache: () {
+                                          AppLogger.userAction(
+                                            'toggle_episode_cache',
+                                            area: 'cache',
+                                            data: {
+                                              'episodeId': episode.id,
+                                              'title': episode.title,
+                                              'cached': cached,
+                                            },
+                                          );
+                                          _toggleCache(episode);
+                                        },
+                                        onPlay: () => _playEpisode(episode),
+                                        onAddToQueue: () {
+                                          AppLogger.userAction(
+                                            'add_episode_to_queue',
+                                            area: 'player',
+                                            data: {
+                                              'episodeId': episode.id,
+                                              'title': episode.title,
+                                              'showId': show.id,
+                                            },
+                                          );
+                                          ref
+                                              .read(
+                                                playbackQueueProvider.notifier,
+                                              )
+                                              .add(episode);
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('已加入播放列表'),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   );
                 }),
@@ -515,13 +519,35 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     );
   }
 
-  String? _episodeSubtitle(Episode episode, bool cached) {
-    final parts = [
-      if (cached) '已缓存',
+  String? _episodeSubtitle(Episode episode) {
+    final parts = <String>[
+      if (episode.publishedAt != null)
+        _formatRelativeDate(episode.publishedAt!),
       if (episode.duration != null) _formatDuration(episode.duration!),
+      if (episode.author != null && episode.author!.isNotEmpty) episode.author!,
     ];
     if (parts.isEmpty) return null;
     return parts.join(' · ');
+  }
+
+  String _subscriptionTooltip() {
+    if (_checkingSubscription) return '检查中';
+    if (_subscribing) return '订阅中';
+    if (_subscribed) return '已订阅';
+    return '订阅';
+  }
+
+  String _formatRelativeDate(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final today = DateUtils.dateOnly(DateTime.now());
+    final day = DateUtils.dateOnly(local);
+    final days = today.difference(day).inDays;
+    if (days == 0) return '今天';
+    if (days == 1) return '昨天';
+    if (days > 1 && days < 7) return '$days天前';
+    if (days >= 7 && days < 30) return '${days ~/ 7}周前';
+    if (days >= 30 && days < 365) return '${days ~/ 30}个月前';
+    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
   }
 
   String _formatDuration(Duration duration) {
@@ -546,21 +572,92 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   }
 }
 
-class _ShowCover extends StatelessWidget {
-  const _ShowCover({this.url});
+class _EpisodeActions extends StatelessWidget {
+  const _EpisodeActions({
+    required this.cached,
+    required this.busy,
+    required this.queued,
+    required this.onToggleCache,
+    required this.onPlay,
+    required this.onAddToQueue,
+  });
+
+  final bool cached;
+  final bool busy;
+  final bool queued;
+  final VoidCallback onToggleCache;
+  final VoidCallback onPlay;
+  final VoidCallback onAddToQueue;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: queued ? '已加入播放列表' : '加入播放列表',
+          icon: Icon(queued ? Icons.check : Icons.playlist_add),
+          onPressed: queued ? null : onAddToQueue,
+        ),
+        IconButton(
+          tooltip: cached ? '已缓存' : '缓存到本地',
+          icon: busy
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(cached ? Icons.offline_pin : Icons.download_outlined),
+          onPressed: busy || cached ? null : onToggleCache,
+        ),
+        IconButton(
+          tooltip: '播放',
+          icon: const Icon(Icons.play_arrow),
+          onPressed: onPlay,
+        ),
+      ],
+    );
+  }
+}
+
+class _EpisodeCover extends StatelessWidget {
+  const _EpisodeCover({this.url});
 
   final String? url;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
+      child: SizedBox.square(
+        dimension: 64,
+        child: url == null
+            ? ColoredBox(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: const Icon(Icons.music_note),
+              )
+            : Image.network(url!, fit: BoxFit.cover),
+      ),
+    );
+  }
+}
+
+class _ShowCover extends StatelessWidget {
+  const _ShowCover({this.url, this.circular = false});
+
+  final String? url;
+  final bool circular;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = circular ? 54.0 : 8.0;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
       child: SizedBox.square(
         dimension: 108,
         child: url == null
             ? ColoredBox(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: const Icon(Icons.podcasts, size: 40),
+                child: Icon(circular ? Icons.person : Icons.podcasts, size: 40),
               )
             : Image.network(url!, fit: BoxFit.cover),
       ),

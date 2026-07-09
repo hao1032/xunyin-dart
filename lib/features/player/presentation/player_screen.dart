@@ -4,6 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../bilibili/data/bilibili_repository.dart';
+import '../../library/data/library_repository.dart';
+import '../../podcast/domain/episode.dart';
+import '../../podcast/domain/podcast_show.dart';
+import '../../podcast/domain/source_type.dart';
+import '../../search/domain/search_result.dart';
 import '../data/playback_queue.dart';
 import '../data/player_controller.dart';
 
@@ -65,12 +71,10 @@ class PlayerScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  episode.author ?? episode.sourceType.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                _PodcastLink(
+                  episode: episode,
+                  queue: queue,
+                  onTap: () => _openPodcast(context, ref, episode, queue),
                 ),
                 const SizedBox(height: 28),
                 _PlayerProgress(player: player),
@@ -130,6 +134,148 @@ class PlayerScreen extends ConsumerWidget {
       area: 'player',
       data: {'seconds': seconds, 'positionMs': bounded.inMilliseconds},
     );
+  }
+
+  Future<void> _openPodcast(
+    BuildContext context,
+    WidgetRef ref,
+    Episode episode,
+    PlaybackQueueState queue,
+  ) async {
+    AppLogger.userAction(
+      'open_show_from_player',
+      area: 'player',
+      data: {'episodeId': episode.id, 'showId': episode.showId},
+    );
+    final show = await _showForEpisode(ref, episode, queue);
+    if (!context.mounted) return;
+    context.push('/show', extra: show);
+  }
+
+  Future<PodcastShow> _showForEpisode(
+    WidgetRef ref,
+    Episode episode,
+    PlaybackQueueState queue,
+  ) async {
+    final subscriptions = await ref
+        .read(libraryRepositoryProvider)
+        .subscriptions();
+    final subscribed = subscriptions.where((show) {
+      return show.id == episode.showId ||
+          show.episodes.any((item) => item.id == episode.id);
+    }).firstOrNull;
+    if (subscribed != null) return subscribed;
+
+    if (episode.sourceType == SourceType.bilibili && episode.bvid != null) {
+      final show = await _resolveBilibiliShow(ref, episode);
+      if (show != null) return show;
+    }
+
+    final queuedShow = queue.items.where((entry) {
+      return entry.type == PlaybackQueueEntryType.show &&
+          entry.containsEpisode(episode.id);
+    }).firstOrNull;
+    if (queuedShow != null) {
+      return PodcastShow(
+        id: queuedShow.id,
+        title: queuedShow.title,
+        sourceType: episode.sourceType,
+        originalUrl: episode.originalUrl,
+        author: episode.author,
+        imageUrl: queuedShow.episodes.first.imageUrl ?? episode.imageUrl,
+        feedUrl: _rssFeedUrl(episode),
+        episodes: queuedShow.episodes,
+      );
+    }
+
+    return PodcastShow(
+      id: episode.showId,
+      title: episode.author ?? episode.sourceType.label,
+      sourceType: episode.sourceType,
+      originalUrl: episode.originalUrl,
+      author: episode.author,
+      imageUrl: episode.imageUrl,
+      feedUrl: _rssFeedUrl(episode),
+      episodes: [episode],
+    );
+  }
+
+  Future<PodcastShow?> _resolveBilibiliShow(
+    WidgetRef ref,
+    Episode episode,
+  ) async {
+    try {
+      final context = await ref
+          .read(bilibiliRepositoryProvider)
+          .resolveEpisodeContext(
+            SearchResult(
+              id: episode.id,
+              title: episode.title,
+              sourceType: episode.sourceType,
+              originalUrl: episode.originalUrl,
+              imageUrl: episode.imageUrl,
+              duration: episode.duration,
+              publishedAt: episode.publishedAt,
+              bvid: episode.bvid,
+            ),
+          );
+      final collection = context.collectionShow;
+      if (collection != null && collection.id == episode.showId) {
+        return collection;
+      }
+      if (episode.showId.startsWith('bili-season-') && collection != null) {
+        return collection;
+      }
+      return context.creatorShow;
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'resolve_show_from_player',
+        error,
+        area: 'player',
+        stackTrace: stackTrace,
+        data: {'episodeId': episode.id, 'bvid': episode.bvid},
+      );
+      return null;
+    }
+  }
+
+  String? _rssFeedUrl(Episode episode) {
+    if (episode.sourceType != SourceType.rss) return null;
+    if (!episode.showId.startsWith('rss-')) return null;
+    final feedUrl = episode.showId.substring('rss-'.length);
+    return feedUrl.isEmpty ? null : feedUrl;
+  }
+}
+
+class _PodcastLink extends StatelessWidget {
+  const _PodcastLink({
+    required this.episode,
+    required this.queue,
+    required this.onTap,
+  });
+
+  final Episode episode;
+  final PlaybackQueueState queue;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = _podcastName();
+    return Center(
+      child: TextButton.icon(
+        icon: const Icon(Icons.podcasts, size: 18),
+        label: Text('播客：$name', maxLines: 1, overflow: TextOverflow.ellipsis),
+        onPressed: onTap,
+      ),
+    );
+  }
+
+  String _podcastName() {
+    final queuedShow = queue.items.where((entry) {
+      return entry.type == PlaybackQueueEntryType.show &&
+          entry.containsEpisode(episode.id);
+    }).firstOrNull;
+    return queuedShow?.title ?? episode.author ?? episode.sourceType.label;
   }
 }
 

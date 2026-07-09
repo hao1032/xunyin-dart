@@ -203,6 +203,8 @@ class BilibiliRepository {
       originalUrl: 'https://www.bilibili.com/video/${bvid ?? ''}',
       subtitle: json['author'] as String?,
       imageUrl: _normalizeImageUrl(json['pic'] as String?),
+      duration: _durationFromSearch(json['duration']),
+      publishedAt: _dateTimeFromSeconds(json['pubdate'] as num?),
       bvid: bvid,
       bilibiliKind: bvid == null
           ? BilibiliResultKind.unavailable
@@ -271,6 +273,11 @@ class BilibiliRepository {
                       ? (json['arc'] as Map)['duration'] as num?
                       : null),
             ),
+            publishedAt: _dateTimeFromSeconds(
+              json['arc'] is Map
+                  ? (json['arc'] as Map)['pubdate'] as num?
+                  : null,
+            ),
             bvid: bvid,
             aid: (json['aid'] as num?)?.toInt(),
             cid: cid,
@@ -300,6 +307,7 @@ class BilibiliRepository {
         author: _ownerName(detail),
         imageUrl: _normalizeImageUrl(detail['pic'] as String?),
         duration: _durationFromSeconds(json['duration'] as num?),
+        publishedAt: _dateTimeFromSeconds(detail['pubdate'] as num?),
         bvid: bvid,
         aid: (detail['aid'] as num?)?.toInt(),
         cid: cid,
@@ -330,6 +338,7 @@ class BilibiliRepository {
       duration: _durationFromSeconds(
         detail['duration'] as num? ?? firstPage['duration'] as num?,
       ),
+      publishedAt: _dateTimeFromSeconds(detail['pubdate'] as num?),
       bvid: bvid,
       aid: (detail['aid'] as num?)?.toInt(),
       cid: cid,
@@ -354,7 +363,9 @@ class BilibiliRepository {
           ? episode.originalUrl
           : 'https://space.bilibili.com/$mid',
       author: name,
-      imageUrl: episode.imageUrl,
+      description: owner['sign'] as String?,
+      imageUrl:
+          _normalizeImageUrl(owner['face'] as String?) ?? episode.imageUrl,
       episodes: [episode],
     );
   }
@@ -378,6 +389,26 @@ class BilibiliRepository {
     final value = seconds?.toInt();
     if (value == null || value <= 0) return null;
     return Duration(seconds: value);
+  }
+
+  Duration? _durationFromSearch(Object? value) {
+    if (value is num) return _durationFromSeconds(value);
+    if (value is! String || value.trim().isEmpty) return null;
+    final parts = value.split(':').map(int.tryParse).toList();
+    if (parts.any((part) => part == null)) return null;
+    if (parts.length == 2) {
+      return Duration(minutes: parts[0]!, seconds: parts[1]!);
+    }
+    if (parts.length == 3) {
+      return Duration(hours: parts[0]!, minutes: parts[1]!, seconds: parts[2]!);
+    }
+    return null;
+  }
+
+  DateTime? _dateTimeFromSeconds(num? seconds) {
+    final value = seconds?.toInt();
+    if (value == null || value <= 0) return null;
+    return DateTime.fromMillisecondsSinceEpoch(value * 1000);
   }
 
   String _stripHtml(String input) {

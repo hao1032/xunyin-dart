@@ -1,5 +1,6 @@
 import 'package:xml/xml.dart';
 
+import '../../../core/text/plain_text.dart';
 import '../domain/episode.dart';
 import '../domain/podcast_show.dart';
 import '../domain/source_type.dart';
@@ -14,13 +15,14 @@ class RssParser {
     final title = _text(channel, 'title') ?? '未命名播客';
     final imageUrl =
         _text(channel, 'image', child: 'url') ??
-        channel.findAllElements('image').firstOrNull?.getAttribute('href');
+        _attribute(channel, 'image', 'href') ??
+        _attribute(channel, 'itunes:image', 'href');
     final show = PodcastShow(
       id: 'rss-$feedUrl',
       title: title,
       sourceType: SourceType.rss,
       originalUrl: _text(channel, 'link') ?? feedUrl,
-      description: _text(channel, 'description'),
+      description: plainTextOrNull(_text(channel, 'description')),
       author: _text(channel, 'author') ?? _text(channel, 'itunes:author'),
       imageUrl: imageUrl,
       feedUrl: feedUrl,
@@ -36,14 +38,13 @@ class RssParser {
         title: _text(item, 'title') ?? '未命名单集',
         sourceType: SourceType.rss,
         originalUrl: _text(item, 'link') ?? feedUrl,
-        description:
-            _text(item, 'description') ?? _text(item, 'itunes:summary'),
+        description: plainTextOrNull(
+          _text(item, 'description') ?? _text(item, 'itunes:summary'),
+        ),
         author: show.author,
         imageUrl:
-            item
-                .findElements('itunes:image')
-                .firstOrNull
-                ?.getAttribute('href') ??
+            _attribute(item, 'itunes:image', 'href') ??
+            _attribute(item, 'image', 'href') ??
             show.imageUrl,
         audioUrl: enclosure?.getAttribute('url'),
         duration: _duration(_text(item, 'itunes:duration')),
@@ -75,12 +76,33 @@ class RssParser {
   }
 
   String? _text(XmlElement parent, String tag, {String? child}) {
-    final element = parent.findElements(tag).firstOrNull;
+    final element = _findElements(parent, tag).firstOrNull;
     if (element == null) return null;
     if (child != null) {
-      return element.findElements(child).firstOrNull?.innerText.trim();
+      return _findElements(element, child).firstOrNull?.innerText.trim();
     }
     final text = element.innerText.trim();
     return text.isEmpty ? null : text;
+  }
+
+  String? _attribute(XmlElement parent, String tag, String attribute) {
+    final value = _findElements(
+      parent,
+      tag,
+    ).firstOrNull?.getAttribute(attribute)?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
+  Iterable<XmlElement> _findElements(XmlElement parent, String tag) {
+    return parent
+        .findElements(tag)
+        .followedBy(
+          parent.childElements.where((element) => _matchesTag(element, tag)),
+        );
+  }
+
+  bool _matchesTag(XmlElement element, String tag) {
+    final local = tag.contains(':') ? tag.split(':').last : tag;
+    return element.name.local == local || element.name.qualified == tag;
   }
 }

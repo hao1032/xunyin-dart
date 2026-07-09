@@ -100,44 +100,42 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                             childIndex: childIndex,
                           ),
                           onToggleCache: _toggleCache,
-                          onRemove: () => _removeEntry(entry),
                         );
                       }
                       final episode = entry.episodes.first;
                       return Card(
-                        child: ListTile(
-                          leading: Icon(
-                            selected ? Icons.graphic_eq : Icons.queue_music,
-                          ),
-                          title: Text(
-                            entry.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            _cachedEpisodeIds.contains(episode.id)
-                                ? '已缓存 · ${entry.subtitle ?? episode.sourceType.label}'
-                                : entry.subtitle ?? episode.sourceType.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () =>
+                              _playEpisode(context, episode, index: index),
+                          child: _QueueEpisodeContent(
+                            coverUrl: episode.imageUrl,
+                            title: entry.title,
+                            subtitle: _queueSubtitle(
+                              episode,
+                              cached: _cachedEpisodeIds.contains(episode.id),
+                              fallback: entry.subtitle,
+                            ),
+                            actions: [
                               _CacheIconButton(
                                 cached: _cachedEpisodeIds.contains(episode.id),
                                 busy: _busyEpisodeIds.contains(episode.id),
                                 onPressed: () => _toggleCache(episode),
                               ),
                               IconButton(
-                                tooltip: '移除',
-                                icon: const Icon(Icons.close),
-                                onPressed: () => _removeEntry(entry),
+                                tooltip: selected ? '正在播放' : '播放',
+                                icon: selected
+                                    ? const _PlayingBars()
+                                    : const Icon(Icons.play_arrow),
+                                onPressed: () => _playEpisode(
+                                  context,
+                                  episode,
+                                  index: index,
+                                ),
                               ),
                             ],
                           ),
-                          onTap: () =>
-                              _playEpisode(context, episode, index: index),
                         ),
                       );
                     },
@@ -149,17 +147,28 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     );
   }
 
-  void _removeEntry(PlaybackQueueEntry entry) {
-    AppLogger.userAction(
-      'remove_queue_entry',
-      area: 'player',
-      data: {
-        'entryId': entry.id,
-        'title': entry.title,
-        'type': entry.type.name,
-      },
-    );
-    ref.read(playbackQueueProvider.notifier).remove(entry.id);
+  String _queueSubtitle(
+    Episode episode, {
+    required bool cached,
+    String? fallback,
+  }) {
+    final parts = <String>[
+      if (cached) '已缓存',
+      if (episode.duration != null) _formatDuration(episode.duration!),
+      fallback ?? episode.author ?? episode.sourceType.label,
+    ];
+    return parts.join(' · ');
+  }
+
+  String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   Future<void> _playEpisode(
@@ -198,24 +207,15 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
 
   Future<void> _toggleCache(Episode episode) async {
     if (_busyEpisodeIds.contains(episode.id)) return;
+    if (_cachedEpisodeIds.contains(episode.id)) return;
     setState(() => _busyEpisodeIds.add(episode.id));
     try {
-      if (_cachedEpisodeIds.contains(episode.id)) {
-        await ref.read(audioCacheRepositoryProvider).remove(episode.id);
-        if (mounted) {
-          setState(() => _cachedEpisodeIds.remove(episode.id));
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('已删除缓存')));
-        }
-      } else {
-        await ref.read(audioCacheRepositoryProvider).cache(episode);
-        if (mounted) {
-          setState(() => _cachedEpisodeIds.add(episode.id));
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
-        }
+      await ref.read(audioCacheRepositoryProvider).cache(episode);
+      if (mounted) {
+        setState(() => _cachedEpisodeIds.add(episode.id));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
@@ -247,7 +247,6 @@ class _ShowQueueCard extends StatelessWidget {
     required this.busyEpisodeIds,
     required this.onPlayEpisode,
     required this.onToggleCache,
-    required this.onRemove,
   });
 
   final PlaybackQueueEntry entry;
@@ -257,25 +256,40 @@ class _ShowQueueCard extends StatelessWidget {
   final Set<String> busyEpisodeIds;
   final void Function(Episode episode, int childIndex) onPlayEpisode;
   final ValueChanged<Episode> onToggleCache;
-  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
       child: ExpansionTile(
-        leading: Icon(
-          selected ? Icons.graphic_eq : Icons.featured_play_list_outlined,
-        ),
-        title: Text(entry.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          entry.subtitle ?? '合集',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: IconButton(
-          tooltip: '移除',
-          icon: const Icon(Icons.close),
-          onPressed: onRemove,
+        leading: _QueueCover(url: entry.episodes.first.imageUrl),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(entry.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    entry.subtitle ?? '合集',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: selected ? '正在播放' : '播放',
+                  icon: selected
+                      ? const _PlayingBars()
+                      : const Icon(Icons.play_arrow),
+                  onPressed: () => onPlayEpisode(entry.episodes.first, 0),
+                ),
+              ],
+            ),
+          ],
         ),
         children: [
           for (
@@ -322,24 +336,42 @@ class _ShowEpisodeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      dense: true,
-      leading: Text('${episodeIndex + 1}'),
-      title: Text(episode.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: cached ? const Text('已缓存') : null,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    return InkWell(
+      onTap: onPlay,
+      child: _QueueEpisodeContent(
+        coverUrl: episode.imageUrl,
+        coverSize: 44,
+        title: episode.title,
+        subtitle: [
+          if (cached) '已缓存',
+          if (episode.duration != null) _formatDuration(episode.duration!),
+          episode.author ?? episode.sourceType.label,
+        ].join(' · '),
+        actions: [
           _CacheIconButton(
             cached: cached,
             busy: busy,
             onPressed: onToggleCache,
           ),
-          Icon(current ? Icons.graphic_eq : Icons.play_arrow),
+          IconButton(
+            tooltip: current ? '正在播放' : '播放',
+            icon: current ? const _PlayingBars() : const Icon(Icons.play_arrow),
+            onPressed: onPlay,
+          ),
         ],
       ),
-      onTap: onPlay,
     );
+  }
+
+  String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
 
@@ -358,7 +390,7 @@ class _CacheIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (busy) {
       return IconButton(
-        tooltip: cached ? '删除缓存中' : '缓存中',
+        tooltip: cached ? '已缓存' : '缓存中',
         onPressed: null,
         icon: const SizedBox.square(
           dimension: 18,
@@ -367,9 +399,155 @@ class _CacheIconButton extends StatelessWidget {
       );
     }
     return IconButton(
-      tooltip: cached ? '已缓存，点击删除' : '缓存到本地',
+      tooltip: cached ? '已缓存' : '缓存到本地',
       icon: Icon(cached ? Icons.offline_pin : Icons.download_outlined),
-      onPressed: onPressed,
+      onPressed: cached ? null : onPressed,
+    );
+  }
+}
+
+class _QueueEpisodeContent extends StatelessWidget {
+  const _QueueEpisodeContent({
+    required this.coverUrl,
+    required this.title,
+    required this.subtitle,
+    required this.actions,
+    this.coverSize = 56,
+  });
+
+  final String? coverUrl;
+  final String title;
+  final String subtitle;
+  final List<Widget> actions;
+  final double coverSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _QueueCover(url: coverUrl, size: coverSize),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ...actions,
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QueueCover extends StatelessWidget {
+  const _QueueCover({this.url, this.size = 56});
+
+  final String? url;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: SizedBox.square(
+        dimension: size,
+        child: url == null
+            ? ColoredBox(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: const Icon(Icons.podcasts),
+              )
+            : Image.network(url!, fit: BoxFit.cover),
+      ),
+    );
+  }
+}
+
+class _PlayingBars extends StatefulWidget {
+  const _PlayingBars();
+
+  @override
+  State<_PlayingBars> createState() => _PlayingBarsState();
+}
+
+class _PlayingBarsState extends State<_PlayingBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return SizedBox(
+          width: 24,
+          height: 24,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _bar(color, 8 + 8 * _controller.value),
+              const SizedBox(width: 3),
+              _bar(color, 16 - 6 * _controller.value),
+              const SizedBox(width: 3),
+              _bar(color, 10 + 10 * _controller.value),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _bar(Color color, double height) {
+    return Container(
+      width: 4,
+      height: height,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(2),
+      ),
     );
   }
 }

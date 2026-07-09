@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/cache/presentation/cache_management_screen.dart';
 import '../../features/home/presentation/main_tab_screen.dart';
+import '../../features/library/presentation/history_screen.dart';
 import '../../features/library/presentation/library_screen.dart';
+import '../../features/library/presentation/subscriptions_screen.dart';
 import '../../features/podcast/domain/episode.dart';
 import '../../features/podcast/domain/podcast_show.dart';
 import '../../features/podcast/presentation/episode_screen.dart';
@@ -29,6 +32,18 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/library',
       builder: (context, state) => const LibraryScreen(),
+    ),
+    GoRoute(
+      path: '/subscriptions',
+      builder: (context, state) => const SubscriptionsScreen(),
+    ),
+    GoRoute(
+      path: '/history',
+      builder: (context, state) => const HistoryScreen(),
+    ),
+    GoRoute(
+      path: '/cache',
+      builder: (context, state) => const CacheManagementScreen(),
     ),
     GoRoute(path: '/queue', builder: (context, state) => const QueueScreen()),
     GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),

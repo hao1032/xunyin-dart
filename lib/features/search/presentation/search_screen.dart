@@ -210,29 +210,80 @@ class _SearchResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tag = result.sourceType == SourceType.bilibili
-        ? result.bilibiliKind.label
-        : result.sourceType.label;
     return Card(
-      child: ListTile(
-        leading: _Cover(url: result.imageUrl),
-        title: Text(result.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          [
-            result.subtitle,
-            if (result.duration != null) _formatDuration(result.duration!),
-            tag,
-          ].whereType<String>().join(' · '),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Icon(
-          enabled ? Icons.chevron_right : Icons.block,
-          color: enabled ? null : Theme.of(context).disabledColor,
-        ),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _Cover(url: result.imageUrl),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      result.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            [
+                              if (result.publishedAt != null)
+                                _formatRelativeDate(result.publishedAt!),
+                              if (result.duration != null)
+                                _formatDuration(result.duration!),
+                              result.subtitle ?? result.showTitle,
+                            ].whereType<String>().join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          enabled ? Icons.chevron_right : Icons.block,
+                          color: enabled
+                              ? Theme.of(context).colorScheme.onSurfaceVariant
+                              : Theme.of(context).disabledColor,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  String _formatRelativeDate(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final today = DateUtils.dateOnly(DateTime.now());
+    final day = DateUtils.dateOnly(local);
+    final days = today.difference(day).inDays;
+    if (days == 0) return '今天';
+    if (days == 1) return '昨天';
+    if (days > 1 && days < 7) return '$days天前';
+    if (days >= 7 && days < 30) return '${days ~/ 7}周前';
+    if (days >= 30 && days < 365) return '${days ~/ 30}个月前';
+    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
   }
 
   String _formatDuration(Duration duration) {

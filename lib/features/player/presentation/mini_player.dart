@@ -14,6 +14,7 @@ class MiniPlayer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final player = ref.watch(appAudioPlayerProvider);
     final queue = ref.watch(playbackQueueProvider);
+    final current = queue.current;
     return StreamBuilder<PlayerState>(
       stream: player.playerStateStream,
       builder: (context, snapshot) {
@@ -33,7 +34,7 @@ class MiniPlayer extends ConsumerWidget {
                 child: Row(
                   children: [
                     const SizedBox(width: 16),
-                    Icon(playing ? Icons.graphic_eq : Icons.podcasts),
+                    _MiniCover(url: current?.imageUrl),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -77,6 +78,28 @@ class MiniPlayer extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _MiniCover extends StatelessWidget {
+  const _MiniCover({this.url});
+
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: SizedBox.square(
+        dimension: 44,
+        child: url == null
+            ? ColoredBox(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: const Icon(Icons.podcasts),
+              )
+            : Image.network(url!, fit: BoxFit.cover),
+      ),
     );
   }
 }
