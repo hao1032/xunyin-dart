@@ -49,4 +49,30 @@ class LibraryRepository {
       data: {'episodeId': episode.id, 'title': episode.title},
     );
   }
+
+  Future<Duration?> playbackPosition(String episodeId) {
+    return _store.loadPlaybackPosition(episodeId);
+  }
+
+  Future<void> savePlaybackPosition(Episode episode, Duration position) async {
+    await _store.savePlaybackPosition(episode.id, position);
+    AppLogger.result(
+      'save_playback_position',
+      area: 'library',
+      data: {
+        'episodeId': episode.id,
+        'title': episode.title,
+        'positionMs': position.inMilliseconds,
+      },
+    );
+  }
+
+  Future<void> clearPlaybackPosition(Episode episode) async {
+    await _store.removePlaybackPosition(episode.id);
+    AppLogger.result(
+      'clear_playback_position',
+      area: 'library',
+      data: {'episodeId': episode.id, 'title': episode.title},
+    );
+  }
 }

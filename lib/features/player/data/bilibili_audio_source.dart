@@ -21,6 +21,7 @@ class BilibiliAudioSource extends StreamAudioSource {
 
   @override
   Future<StreamAudioResponse> request([int? start, int? end]) async {
+    final requestStart = start ?? 0;
     final client = HttpClient();
     HttpClientRequest? request;
     try {
@@ -30,7 +31,7 @@ class BilibiliAudioSource extends StreamAudioSource {
         message: 'request',
         data: {
           'episodeId': episodeId,
-          'start': start,
+          'start': requestStart,
           'end': end,
           'host': uri.host,
         },
@@ -38,7 +39,10 @@ class BilibiliAudioSource extends StreamAudioSource {
       request = await client.getUrl(uri);
       headers.forEach(request.headers.set);
       if (start != null || end != null) {
-        request.headers.set(HttpHeaders.rangeHeader, _rangeHeader(start, end));
+        request.headers.set(
+          HttpHeaders.rangeHeader,
+          _rangeHeader(requestStart, end),
+        );
       }
 
       final response = await request.close();
@@ -54,8 +58,8 @@ class BilibiliAudioSource extends StreamAudioSource {
           : response.contentLength;
       final sourceLength = range?.sourceLength ?? contentLength;
       final offset = response.statusCode == HttpStatus.partialContent
-          ? range?.start ?? start ?? 0
-          : null;
+          ? range?.start ?? requestStart
+          : requestStart;
 
       AppLogger.result(
         'bilibili_stream_request',
