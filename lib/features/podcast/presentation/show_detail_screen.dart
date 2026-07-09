@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../bilibili/data/bilibili_repository.dart';
 import '../../cache/data/audio_cache_repository.dart';
 import '../../library/data/library_repository.dart';
 import '../../player/data/playback_queue.dart';
@@ -10,6 +11,8 @@ import '../../player/data/player_controller.dart';
 import '../../player/presentation/mini_player.dart';
 import '../domain/episode.dart';
 import '../domain/podcast_show.dart';
+import '../domain/source_type.dart';
+import 'episode_screen.dart';
 
 class ShowDetailScreen extends ConsumerStatefulWidget {
   const ShowDetailScreen({super.key, required this.show});
@@ -24,14 +27,21 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   bool _subscribing = false;
   bool _checkingSubscription = true;
   bool _subscribed = false;
+  bool _loadingCreatorVideos = false;
+  Object? _creatorVideosError;
+  late PodcastShow _show;
   final Set<String> _cachedEpisodeIds = {};
   final Set<String> _busyEpisodeIds = {};
 
   @override
   void initState() {
     super.initState();
+    _show = widget.show;
     _loadSubscriptionState();
     _loadCacheState();
+    if (_isBilibiliCreatorShow(widget.show)) {
+      _loadCreatorVideos();
+    }
   }
 
   Future<void> _loadSubscriptionState() async {
@@ -82,9 +92,41 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     }
   }
 
+  Future<void> _loadCreatorVideos() async {
+    setState(() {
+      _loadingCreatorVideos = true;
+      _creatorVideosError = null;
+    });
+    try {
+      final show = await ref
+          .read(bilibiliRepositoryProvider)
+          .loadCreatorShow(widget.show);
+      if (mounted) {
+        setState(() {
+          _show = show;
+          _loadingCreatorVideos = false;
+        });
+      }
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'load_creator_videos',
+        error,
+        area: 'bilibili',
+        stackTrace: stackTrace,
+        data: {'showId': widget.show.id, 'title': widget.show.title},
+      );
+      if (mounted) {
+        setState(() {
+          _loadingCreatorVideos = false;
+          _creatorVideosError = error;
+        });
+      }
+    }
+  }
+
   Future<void> _subscribe() async {
     if (_subscribing || _subscribed) return;
-    final show = widget.show;
+    final show = _show;
     setState(() => _subscribing = true);
     try {
       AppLogger.userAction(
@@ -184,7 +226,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final show = widget.show;
+    final show = _show;
+    final loadingEpisodes =
+        _loadingCreatorVideos && _isBilibiliCreatorShow(widget.show);
+    final episodes = loadingEpisodes ? const <Episode>[] : show.episodes;
     final queue = ref.watch(playbackQueueProvider);
     final isQueued = queue.items.any((item) => item.id == show.id);
     return Scaffold(
@@ -211,7 +256,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           const SizedBox(height: 6),
                           Text(show.author ?? show.sourceType.label),
                           const SizedBox(height: 8),
-                          Text('${show.episodes.length} 集'),
+                          Text(
+                            loadingEpisodes ? '加载中' : '${episodes.length} 集',
+                          ),
                         ],
                       ),
                     ),
@@ -233,7 +280,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                       child: FilledButton.icon(
                         icon: Icon(isQueued ? Icons.check : Icons.playlist_add),
                         label: Text(isQueued ? '已加入播放列表' : '加入播放列表'),
-                        onPressed: show.episodes.isEmpty || isQueued
+                        onPressed: episodes.isEmpty || isQueued
                             ? null
                             : () {
                                 AppLogger.userAction(
@@ -242,7 +289,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                                   data: {
                                     'showId': show.id,
                                     'title': show.title,
-                                    'episodeCount': show.episodes.length,
+                                    'episodeCount': episodes.length,
                                   },
                                 );
                                 ref
@@ -287,20 +334,34 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 const SizedBox(height: 20),
                 Text('单集', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                ...show.episodes.map((episode) {
+                if (_loadingCreatorVideos)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                if (_creatorVideosError != null)
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.error_outline),
+                      title: const Text('UP主视频列表加载失败'),
+                      subtitle: Text(_creatorVideosError.toString()),
+                      trailing: TextButton(
+                        onPressed: _loadCreatorVideos,
+                        child: const Text('重试'),
+                      ),
+                    ),
+                  ),
+                ...episodes.map((episode) {
                   final episodeQueued = queue.items.any(
                     (item) => item.containsEpisode(episode.id),
                   );
                   final cached = _cachedEpisodeIds.contains(episode.id);
                   final busy = _busyEpisodeIds.contains(episode.id);
+                  final subtitle = _episodeSubtitle(episode, cached);
                   return Card(
                     child: ListTile(
                       title: Text(episode.title),
-                      subtitle: Text(
-                        cached
-                            ? '已缓存 · ${episode.author ?? show.title}'
-                            : (episode.author ?? show.title),
-                      ),
+                      subtitle: subtitle == null ? null : Text(subtitle),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -375,7 +436,13 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                             'showId': show.id,
                           },
                         );
-                        context.push('/episode', extra: episode);
+                        context.push(
+                          '/episode',
+                          extra: EpisodeScreenArgs(
+                            episode: episode,
+                            relatedShows: [show],
+                          ),
+                        );
                       },
                     ),
                   );
@@ -387,6 +454,31 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         ],
       ),
     );
+  }
+
+  String? _episodeSubtitle(Episode episode, bool cached) {
+    final parts = [
+      if (cached) '已缓存',
+      if (episode.duration != null) _formatDuration(episode.duration!),
+    ];
+    if (parts.isEmpty) return null;
+    return parts.join(' · ');
+  }
+
+  String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  bool _isBilibiliCreatorShow(PodcastShow show) {
+    return show.sourceType == SourceType.bilibili &&
+        show.id.startsWith('bili-up-');
   }
 }
 

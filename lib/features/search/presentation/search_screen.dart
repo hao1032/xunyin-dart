@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
-import '../../bilibili/data/bilibili_repository.dart';
 import '../../player/presentation/mini_player.dart';
-import '../../podcast/data/podcast_repository.dart';
 import '../../podcast/domain/source_type.dart';
 import '../data/search_repository.dart';
 import '../domain/search_result.dart';
@@ -70,7 +68,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   Future<void> _open(SearchResult result) async {
-    final messenger = ScaffoldMessenger.of(context);
     if (!_canOpen(result)) {
       AppLogger.userAction(
         'open_search_result_blocked',
@@ -82,7 +79,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           'reason': 'missing_bvid',
         },
       );
-      messenger.showSnackBar(const SnackBar(content: Text('这个 B站结果暂时无法识别')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('这个 B站结果暂时无法识别')));
       return;
     }
     AppLogger.userAction(
@@ -95,51 +94,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         'bvid': result.bvid,
       },
     );
-    try {
-      if (result.sourceType == SourceType.bilibili) {
-        final show = await ref
-            .read(bilibiliRepositoryProvider)
-            .resolveAsShow(result);
-        AppLogger.result(
-          'open_search_result',
-          area: 'search',
-          data: {
-            'showId': show.id,
-            'showTitle': show.title,
-            'episodeCount': show.episodes.length,
-          },
-        );
-        if (!mounted) return;
-        if (show.episodes.length == 1) {
-          context.push('/episode', extra: show.episodes.first);
-        } else {
-          context.push('/show', extra: show);
-        }
-      } else {
-        final show = await ref
-            .read(podcastRepositoryProvider)
-            .loadRssShow(result);
-        AppLogger.result(
-          'open_search_result',
-          area: 'search',
-          data: {
-            'showId': show.id,
-            'showTitle': show.title,
-            'episodeCount': show.episodes.length,
-          },
-        );
-        if (mounted) context.push('/show', extra: show);
-      }
-    } catch (error, stackTrace) {
-      AppLogger.failure(
-        'open_search_result',
-        error,
-        area: 'search',
-        stackTrace: stackTrace,
-        data: {'id': result.id, 'source': result.sourceType.name},
-      );
-      messenger.showSnackBar(SnackBar(content: Text(error.toString())));
-    }
+    context.push('/search/result', extra: result);
   }
 
   bool _canOpen(SearchResult result) {
@@ -263,7 +218,11 @@ class _SearchResultTile extends StatelessWidget {
         leading: _Cover(url: result.imageUrl),
         title: Text(result.title, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: Text(
-          [result.subtitle, tag].whereType<String>().join(' · '),
+          [
+            result.subtitle,
+            if (result.duration != null) _formatDuration(result.duration!),
+            tag,
+          ].whereType<String>().join(' · '),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -274,6 +233,17 @@ class _SearchResultTile extends StatelessWidget {
         onTap: onTap,
       ),
     );
+  }
+
+  String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
 

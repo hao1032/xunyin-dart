@@ -46,10 +46,32 @@ class RssParser {
                 ?.getAttribute('href') ??
             show.imageUrl,
         audioUrl: enclosure?.getAttribute('url'),
+        duration: _duration(_text(item, 'itunes:duration')),
         publishedAt: DateTime.tryParse(_text(item, 'pubDate') ?? ''),
       );
     }).toList();
     return show.copyWith(episodes: episodes);
+  }
+
+  Duration? _duration(String? value) {
+    final text = value?.trim();
+    if (text == null || text.isEmpty) return null;
+    final seconds = int.tryParse(text);
+    if (seconds != null) {
+      return seconds <= 0 ? null : Duration(seconds: seconds);
+    }
+    final parts = text.split(':');
+    if (parts.length < 2 || parts.length > 3) return null;
+    final parsed = parts.map(int.tryParse).toList();
+    if (parsed.any((part) => part == null)) return null;
+    final values = parsed.cast<int>();
+    final totalSeconds = switch (values.length) {
+      2 => values[0] * 60 + values[1],
+      3 => values[0] * 3600 + values[1] * 60 + values[2],
+      _ => 0,
+    };
+    if (totalSeconds <= 0) return null;
+    return Duration(seconds: totalSeconds);
   }
 
   String? _text(XmlElement parent, String tag, {String? child}) {

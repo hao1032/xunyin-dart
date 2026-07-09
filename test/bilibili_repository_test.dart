@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xunyin_dart/features/bilibili/data/bilibili_client.dart';
 import 'package:xunyin_dart/features/bilibili/data/bilibili_repository.dart';
+import 'package:xunyin_dart/features/podcast/domain/podcast_show.dart';
 import 'package:xunyin_dart/features/podcast/domain/source_type.dart';
 import 'package:xunyin_dart/features/search/domain/search_result.dart';
 
@@ -121,6 +122,51 @@ void main() {
     expect(show.title, 'Season Talk');
     expect(show.episodes.map((episode) => episode.bvid), ['BV101', 'BV102']);
   });
+
+  test('loads B站 creator videos as playable episodes', () async {
+    final repository = BilibiliRepository(
+      _FakeBilibiliClient(
+        rows: [
+          {'bvid': 'BV101'},
+          {'bvid': 'BV102'},
+        ],
+        details: {
+          'BV101': {
+            'bvid': 'BV101',
+            'title': 'Video 1',
+            'owner': {'name': 'Alice', 'mid': 42},
+            'pages': [
+              {'cid': 201, 'page': 1, 'duration': 60},
+            ],
+          },
+          'BV102': {
+            'bvid': 'BV102',
+            'title': 'Video 2',
+            'owner': {'name': 'Alice', 'mid': 42},
+            'pages': [
+              {'cid': 202, 'page': 1, 'duration': 90},
+            ],
+          },
+        },
+      ),
+    );
+
+    final show = await repository.loadCreatorShow(
+      const PodcastShow(
+        id: 'bili-up-42',
+        title: 'Alice',
+        sourceType: SourceType.bilibili,
+        originalUrl: 'https://space.bilibili.com/42',
+      ),
+    );
+
+    expect(show.episodes.map((episode) => episode.title), [
+      'Video 1',
+      'Video 2',
+    ]);
+    expect(show.episodes.first.cid, 201);
+    expect(show.episodes.first.duration, const Duration(seconds: 60));
+  });
 }
 
 SearchResult _result() {
@@ -136,15 +182,25 @@ SearchResult _result() {
 class _FakeBilibiliClient extends BilibiliClient {
   _FakeBilibiliClient({
     this.detail = const <String, dynamic>{},
+    this.details = const <String, Map<String, dynamic>>{},
     this.rows = const <Map<String, dynamic>>[],
   }) : super(Dio());
 
   final Map<String, dynamic> detail;
+  final Map<String, Map<String, dynamic>> details;
   final List<Map<String, dynamic>> rows;
 
   @override
   Future<List<Map<String, dynamic>>> searchVideos(String keyword) async => rows;
 
   @override
-  Future<Map<String, dynamic>> videoDetail(String bvid) async => detail;
+  Future<List<Map<String, dynamic>>> ownerVideos(
+    int mid, {
+    int pageSize = 30,
+  }) async => rows;
+
+  @override
+  Future<Map<String, dynamic>> videoDetail(String bvid) async {
+    return details[bvid] ?? detail;
+  }
 }

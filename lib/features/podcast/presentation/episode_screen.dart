@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
 import '../../cache/data/audio_cache_repository.dart';
@@ -8,11 +9,18 @@ import '../../player/data/playback_queue.dart';
 import '../../player/data/player_controller.dart';
 import '../../player/presentation/mini_player.dart';
 import '../domain/episode.dart';
+import '../domain/podcast_show.dart';
+import '../domain/source_type.dart';
 
 class EpisodeScreen extends ConsumerStatefulWidget {
-  const EpisodeScreen({super.key, required this.episode});
+  const EpisodeScreen({
+    super.key,
+    required this.episode,
+    this.relatedShows = const [],
+  });
 
   final Episode episode;
+  final List<PodcastShow> relatedShows;
 
   @override
   ConsumerState<EpisodeScreen> createState() => _EpisodeScreenState();
@@ -125,6 +133,7 @@ class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
   @override
   Widget build(BuildContext context) {
     final episode = widget.episode;
+    final relatedShows = _dedupeShows(widget.relatedShows);
     final queue = ref.watch(playbackQueueProvider);
     final isQueued = queue.items.any(
       (item) => item.containsEpisode(episode.id),
@@ -158,7 +167,47 @@ class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
-                Text(episode.author ?? episode.sourceType.label),
+                Text(
+                  [
+                    episode.author ?? episode.sourceType.label,
+                    if (episode.duration != null)
+                      _formatDuration(episode.duration!),
+                  ].join(' · '),
+                ),
+                if (relatedShows.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: relatedShows.map((show) {
+                      return ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width - 40,
+                        ),
+                        child: OutlinedButton.icon(
+                          icon: Icon(_showIcon(show)),
+                          label: Text(
+                            '${_showEntryLabel(show)}：${show.title}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onPressed: () {
+                            AppLogger.userAction(
+                              'open_related_show',
+                              area: 'podcast',
+                              data: {
+                                'episodeId': episode.id,
+                                'showId': show.id,
+                                'showTitle': show.title,
+                              },
+                            );
+                            context.push('/show', extra: show);
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
                 if (_cachedEpisode != null) ...[
                   const SizedBox(height: 8),
                   Align(
@@ -251,4 +300,55 @@ class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
     if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
     return '${(mb / 1024).toStringAsFixed(1)} GB';
   }
+
+  List<PodcastShow> _dedupeShows(List<PodcastShow> shows) {
+    final seen = <String>{};
+    return [
+      for (final show in shows)
+        if (seen.add(show.id)) show,
+    ];
+  }
+
+  IconData _showIcon(PodcastShow show) {
+    if (show.sourceType == SourceType.bilibili &&
+        (show.id.startsWith('bili-season') || show.episodes.length > 1)) {
+      return Icons.video_collection_outlined;
+    }
+    if (show.id.startsWith('bili-up')) {
+      return Icons.person_outline;
+    }
+    return Icons.podcasts;
+  }
+
+  String _showEntryLabel(PodcastShow show) {
+    if (show.sourceType == SourceType.bilibili &&
+        (show.id.startsWith('bili-season') || show.episodes.length > 1)) {
+      return '合集';
+    }
+    if (show.id.startsWith('bili-up')) {
+      return 'UP主';
+    }
+    return '播客';
+  }
+
+  String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+}
+
+class EpisodeScreenArgs {
+  const EpisodeScreenArgs({
+    required this.episode,
+    this.relatedShows = const [],
+  });
+
+  final Episode episode;
+  final List<PodcastShow> relatedShows;
 }

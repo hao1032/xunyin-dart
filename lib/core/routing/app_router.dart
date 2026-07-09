@@ -9,6 +9,8 @@ import '../../features/podcast/presentation/episode_screen.dart';
 import '../../features/player/presentation/player_screen.dart';
 import '../../features/podcast/presentation/show_detail_screen.dart';
 import '../../features/player/presentation/queue_screen.dart';
+import '../../features/search/domain/search_result.dart';
+import '../../features/search/presentation/search_result_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 
 final appRouter = GoRouter(
@@ -16,6 +18,14 @@ final appRouter = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (context, state) => const MainTabScreen()),
     GoRoute(path: '/search', builder: (context, state) => const SearchScreen()),
+    GoRoute(
+      path: '/search/result',
+      builder: (context, state) {
+        final result = state.extra;
+        if (result is! SearchResult) return const _MissingRouteData();
+        return SearchResultScreen(result: result);
+      },
+    ),
     GoRoute(
       path: '/library',
       builder: (context, state) => const LibraryScreen(),
@@ -33,9 +43,15 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/episode',
       builder: (context, state) {
-        final episode = state.extra;
-        if (episode is! Episode) return const _MissingRouteData();
-        return EpisodeScreen(episode: episode);
+        final extra = state.extra;
+        if (extra is EpisodeScreenArgs) {
+          return EpisodeScreen(
+            episode: extra.episode,
+            relatedShows: extra.relatedShows,
+          );
+        }
+        if (extra is Episode) return EpisodeScreen(episode: extra);
+        return const _MissingRouteData();
       },
     ),
   ],

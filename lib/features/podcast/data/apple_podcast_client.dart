@@ -29,7 +29,7 @@ class ApplePodcastClient {
       'https://itunes.apple.com/search',
       queryParameters: {
         'media': 'podcast',
-        'entity': 'podcast',
+        'entity': 'podcastEpisode',
         'term': keyword.trim(),
         'limit': 25,
       },
@@ -48,17 +48,30 @@ class ApplePodcastClient {
     final mapped = results.whereType<Map>().map((raw) {
       final json = raw.cast<String, dynamic>();
       final feedUrl = json['feedUrl'] as String?;
-      final collectionId = json['collectionId']?.toString() ?? feedUrl;
+      final trackId = json['trackId']?.toString() ?? json['episodeGuid'];
+      final collectionName = json['collectionName'] as String?;
+      final trackName = json['trackName'] as String?;
       return SearchResult(
-        id: 'apple-$collectionId',
-        title: json['collectionName'] as String? ?? '未命名播客',
+        id: 'apple-episode-${trackId ?? trackName ?? feedUrl}',
+        title: trackName ?? '未命名单集',
         sourceType: SourceType.applePodcast,
-        originalUrl: json['collectionViewUrl'] as String? ?? feedUrl ?? '',
-        subtitle: json['artistName'] as String?,
+        originalUrl:
+            json['trackViewUrl'] as String? ??
+            json['collectionViewUrl'] as String? ??
+            feedUrl ??
+            '',
+        subtitle: collectionName ?? json['artistName'] as String?,
+        description:
+            json['description'] as String? ??
+            json['shortDescription'] as String?,
         imageUrl:
             json['artworkUrl600'] as String? ??
             json['artworkUrl100'] as String?,
         feedUrl: feedUrl,
+        audioUrl: json['episodeUrl'] as String?,
+        duration: _durationFromMillis(json['trackTimeMillis'] as num?),
+        publishedAt: DateTime.tryParse(json['releaseDate'] as String? ?? ''),
+        showTitle: collectionName,
       );
     }).toList();
     AppLogger.result(
@@ -68,6 +81,12 @@ class ApplePodcastClient {
     );
     return mapped;
   }
+}
+
+Duration? _durationFromMillis(num? milliseconds) {
+  final value = milliseconds?.toInt();
+  if (value == null || value <= 0) return null;
+  return Duration(milliseconds: value);
 }
 
 Map<String, dynamic> parseAppleSearchBody(Object? body) {

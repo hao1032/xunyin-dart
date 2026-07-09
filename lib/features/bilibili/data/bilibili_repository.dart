@@ -91,6 +91,93 @@ class BilibiliRepository {
     return show;
   }
 
+  Future<BilibiliEpisodeContext> resolveEpisodeContext(
+    SearchResult result,
+  ) async {
+    final bvid = _normalizeBvid(result.bvid);
+    if (bvid == null) {
+      throw ArgumentError('B站搜索结果缺少 bvid');
+    }
+    AppLogger.result(
+      'resolve_episode_context',
+      area: 'bilibili',
+      message: 'start',
+      data: {'bvid': bvid, 'title': result.title},
+    );
+    final detail = await _client.videoDetail(bvid);
+    final episode = _singleEpisode(detail);
+    PodcastShow? collectionShow;
+
+    final seasonEpisodes = _episodesFromUgcSeason(detail);
+    if (seasonEpisodes.isNotEmpty) {
+      collectionShow = _showFromDetail(
+        detail,
+        episodes: seasonEpisodes,
+        collection: true,
+      );
+    } else {
+      final pageEpisodes = _episodesFromPages(detail);
+      if (pageEpisodes.length > 1) {
+        collectionShow = _showFromDetail(detail, episodes: pageEpisodes);
+      }
+    }
+
+    final creatorShow = _creatorShowFromDetail(detail, episode);
+    AppLogger.result(
+      'resolve_episode_context',
+      area: 'bilibili',
+      data: {
+        'episodeId': episode.id,
+        'collectionShowId': collectionShow?.id,
+        'creatorShowId': creatorShow?.id,
+      },
+    );
+    return BilibiliEpisodeContext(
+      episode: episode,
+      collectionShow: collectionShow,
+      creatorShow: creatorShow,
+    );
+  }
+
+  Future<PodcastShow> loadCreatorShow(PodcastShow show) async {
+    final mid = _midFromCreatorShowId(show.id);
+    if (mid == null) return show;
+    AppLogger.result(
+      'load_creator_show',
+      area: 'bilibili',
+      message: 'start',
+      data: {'showId': show.id, 'mid': mid, 'title': show.title},
+    );
+    final rows = await _client.ownerVideos(mid);
+    final episodes = <Episode>[];
+    for (final row in rows) {
+      final bvid = _normalizeBvid(row['bvid'] as String?);
+      if (bvid == null) continue;
+      try {
+        episodes.add(_singleEpisode(await _client.videoDetail(bvid)));
+      } catch (error, stackTrace) {
+        AppLogger.failure(
+          'load_creator_episode_detail',
+          error,
+          area: 'bilibili',
+          stackTrace: stackTrace,
+          data: {'showId': show.id, 'mid': mid, 'bvid': bvid},
+        );
+      }
+    }
+    final loaded = show.copyWith(episodes: episodes);
+    AppLogger.result(
+      'load_creator_show',
+      area: 'bilibili',
+      data: {
+        'showId': loaded.id,
+        'mid': mid,
+        'episodeCount': loaded.episodes.length,
+      },
+    );
+    return loaded;
+  }
+
   Future<String> resolveAudioUrl(Episode episode) {
     final bvid = episode.bvid;
     final cid = episode.cid;
@@ -178,6 +265,12 @@ class BilibiliRepository {
                   ? (json['arc'] as Map)['pic'] as String?
                   : detail['pic'] as String?,
             ),
+            duration: _durationFromSeconds(
+              json['duration'] as num? ??
+                  (json['arc'] is Map
+                      ? (json['arc'] as Map)['duration'] as num?
+                      : null),
+            ),
             bvid: bvid,
             aid: (json['aid'] as num?)?.toInt(),
             cid: cid,
@@ -206,7 +299,7 @@ class BilibiliRepository {
         originalUrl: 'https://www.bilibili.com/video/$bvid?p=$page',
         author: _ownerName(detail),
         imageUrl: _normalizeImageUrl(detail['pic'] as String?),
-        duration: Duration(seconds: (json['duration'] as num?)?.toInt() ?? 0),
+        duration: _durationFromSeconds(json['duration'] as num?),
         bvid: bvid,
         aid: (detail['aid'] as num?)?.toInt(),
         cid: cid,
@@ -234,11 +327,35 @@ class BilibiliRepository {
       description: detail['desc'] as String?,
       author: _ownerName(detail),
       imageUrl: _normalizeImageUrl(detail['pic'] as String?),
-      duration: Duration(seconds: (detail['duration'] as num?)?.toInt() ?? 0),
+      duration: _durationFromSeconds(
+        detail['duration'] as num? ?? firstPage['duration'] as num?,
+      ),
       bvid: bvid,
       aid: (detail['aid'] as num?)?.toInt(),
       cid: cid,
       page: 1,
+    );
+  }
+
+  PodcastShow? _creatorShowFromDetail(
+    Map<String, dynamic> detail,
+    Episode episode,
+  ) {
+    final owner = detail['owner'];
+    if (owner is! Map) return null;
+    final name = owner['name'] as String?;
+    if (name == null || name.trim().isEmpty) return null;
+    final mid = (owner['mid'] as num?)?.toInt();
+    return PodcastShow(
+      id: 'bili-up-${mid ?? episode.bvid ?? episode.id}',
+      title: name,
+      sourceType: SourceType.bilibili,
+      originalUrl: mid == null
+          ? episode.originalUrl
+          : 'https://space.bilibili.com/$mid',
+      author: name,
+      imageUrl: episode.imageUrl,
+      episodes: [episode],
     );
   }
 
@@ -250,6 +367,17 @@ class BilibiliRepository {
   int? _ownerMid(Map<String, dynamic> detail) {
     final owner = detail['owner'];
     return owner is Map ? (owner['mid'] as num?)?.toInt() : null;
+  }
+
+  int? _midFromCreatorShowId(String id) {
+    if (!id.startsWith('bili-up-')) return null;
+    return int.tryParse(id.substring('bili-up-'.length));
+  }
+
+  Duration? _durationFromSeconds(num? seconds) {
+    final value = seconds?.toInt();
+    if (value == null || value <= 0) return null;
+    return Duration(seconds: value);
   }
 
   String _stripHtml(String input) {
@@ -267,4 +395,16 @@ class BilibiliRepository {
     if (url.startsWith('//')) return 'https:$url';
     return url;
   }
+}
+
+class BilibiliEpisodeContext {
+  const BilibiliEpisodeContext({
+    required this.episode,
+    this.collectionShow,
+    this.creatorShow,
+  });
+
+  final Episode episode;
+  final PodcastShow? collectionShow;
+  final PodcastShow? creatorShow;
 }
