@@ -32,11 +32,15 @@ class PodcastRepository {
     if (feedUrl == null || feedUrl.isEmpty) {
       throw ArgumentError('搜索结果缺少 RSS feedUrl');
     }
+    return loadRssFeed(feedUrl, title: result.title);
+  }
+
+  Future<PodcastShow> loadRssFeed(String feedUrl, {String? title}) async {
     AppLogger.result(
       'load_rss_show',
       area: 'podcast',
       message: 'request',
-      data: {'feedUrl': feedUrl, 'title': result.title},
+      data: {'feedUrl': feedUrl, 'title': ?title},
     );
     final response = await _dio.get<Object?>(
       feedUrl,

@@ -61,7 +61,7 @@ class _SearchResultScreenState extends ConsumerState<SearchResultScreen> {
       final show = PodcastShow(
         id: _showId(result),
         title: result.showTitle ?? result.subtitle ?? '播客',
-        sourceType: result.sourceType,
+        sourceType: SourceType.rss,
         originalUrl: result.feedUrl ?? result.originalUrl,
         author: result.subtitle,
         imageUrl: result.imageUrl,

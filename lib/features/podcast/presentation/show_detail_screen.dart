@@ -9,6 +9,7 @@ import '../../library/data/library_repository.dart';
 import '../../player/data/playback_queue.dart';
 import '../../player/data/player_controller.dart';
 import '../../player/presentation/mini_player.dart';
+import '../data/podcast_repository.dart';
 import '../domain/episode.dart';
 import '../domain/podcast_show.dart';
 import '../domain/source_type.dart';
@@ -28,7 +29,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   bool _checkingSubscription = true;
   bool _subscribed = false;
   bool _loadingCreatorVideos = false;
+  bool _loadingRssEpisodes = false;
   Object? _creatorVideosError;
+  Object? _rssEpisodesError;
   late PodcastShow _show;
   final Set<String> _cachedEpisodeIds = {};
   final Set<String> _busyEpisodeIds = {};
@@ -41,6 +44,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     _loadCacheState();
     if (_isBilibiliCreatorShow(widget.show)) {
       _loadCreatorVideos();
+    }
+    if (_isRssShow(widget.show)) {
+      _loadRssEpisodes();
     }
   }
 
@@ -119,6 +125,46 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         setState(() {
           _loadingCreatorVideos = false;
           _creatorVideosError = error;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadRssEpisodes() async {
+    final feedUrl = widget.show.feedUrl;
+    if (feedUrl == null || feedUrl.isEmpty) return;
+    setState(() {
+      _loadingRssEpisodes = true;
+      _rssEpisodesError = null;
+    });
+    try {
+      final show = await ref
+          .read(podcastRepositoryProvider)
+          .loadRssFeed(feedUrl, title: widget.show.title);
+      if (!mounted) return;
+      setState(() {
+        _show = show;
+        _loadingRssEpisodes = false;
+      });
+      if (await ref.read(libraryRepositoryProvider).isSubscribed(show.id)) {
+        await ref.read(libraryRepositoryProvider).subscribe(show);
+      }
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'load_rss_episodes',
+        error,
+        area: 'podcast',
+        stackTrace: stackTrace,
+        data: {
+          'showId': widget.show.id,
+          'title': widget.show.title,
+          'feedUrl': feedUrl,
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _loadingRssEpisodes = false;
+          _rssEpisodesError = error;
         });
       }
     }
@@ -228,7 +274,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   Widget build(BuildContext context) {
     final show = _show;
     final loadingEpisodes =
-        _loadingCreatorVideos && _isBilibiliCreatorShow(widget.show);
+        (_loadingCreatorVideos && _isBilibiliCreatorShow(widget.show)) ||
+        (_loadingRssEpisodes && _isRssShow(widget.show));
     final episodes = loadingEpisodes ? const <Episode>[] : show.episodes;
     final queue = ref.watch(playbackQueueProvider);
     final isQueued = queue.items.any((item) => item.id == show.id);
@@ -334,10 +381,22 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                 const SizedBox(height: 20),
                 Text('单集', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                if (_loadingCreatorVideos)
+                if (_loadingCreatorVideos || _loadingRssEpisodes)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Center(child: CircularProgressIndicator()),
+                  ),
+                if (_rssEpisodesError != null)
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.error_outline),
+                      title: const Text('RSS 单集列表加载失败'),
+                      subtitle: Text(_rssEpisodesError.toString()),
+                      trailing: TextButton(
+                        onPressed: _loadRssEpisodes,
+                        child: const Text('重试'),
+                      ),
+                    ),
                   ),
                 if (_creatorVideosError != null)
                   Card(
@@ -479,6 +538,11 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   bool _isBilibiliCreatorShow(PodcastShow show) {
     return show.sourceType == SourceType.bilibili &&
         show.id.startsWith('bili-up-');
+  }
+
+  bool _isRssShow(PodcastShow show) {
+    return show.sourceType == SourceType.rss ||
+        (show.feedUrl != null && show.feedUrl!.isNotEmpty);
   }
 }
 
