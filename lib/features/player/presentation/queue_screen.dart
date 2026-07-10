@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../audio/presentation/audio_list_item.dart';
 import '../../cache/data/audio_cache_repository.dart';
 import '../../podcast/domain/episode.dart';
 import '../data/playback_queue.dart';
@@ -103,40 +104,31 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                         );
                       }
                       final episode = entry.episodes.first;
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
-                          onTap: () =>
-                              _playEpisode(context, episode, index: index),
-                          child: _QueueEpisodeContent(
-                            coverUrl: episode.imageUrl,
-                            title: entry.title,
-                            subtitle: _queueSubtitle(
-                              episode,
-                              cached: _cachedEpisodeIds.contains(episode.id),
-                              fallback: entry.subtitle,
-                            ),
-                            actions: [
-                              _CacheIconButton(
-                                cached: _cachedEpisodeIds.contains(episode.id),
-                                busy: _busyEpisodeIds.contains(episode.id),
-                                onPressed: () => _toggleCache(episode),
-                              ),
-                              IconButton(
-                                tooltip: selected ? '正在播放' : '播放',
-                                icon: selected
-                                    ? const _PlayingBars()
-                                    : const Icon(Icons.play_arrow),
-                                onPressed: () => _playEpisode(
-                                  context,
-                                  episode,
-                                  index: index,
-                                ),
-                              ),
-                            ],
-                          ),
+                      return AudioListItem(
+                        coverUrl: episode.imageUrl,
+                        title: entry.title,
+                        metadata: _queueSubtitle(
+                          episode,
+                          cached: _cachedEpisodeIds.contains(episode.id),
+                          fallback: entry.subtitle,
                         ),
+                        onTap: () =>
+                            _playEpisode(context, episode, index: index),
+                        actions: [
+                          _CacheIconButton(
+                            cached: _cachedEpisodeIds.contains(episode.id),
+                            busy: _busyEpisodeIds.contains(episode.id),
+                            onPressed: () => _toggleCache(episode),
+                          ),
+                          IconButton(
+                            tooltip: selected ? '正在播放' : '播放',
+                            icon: selected
+                                ? const _PlayingBars()
+                                : const Icon(Icons.play_arrow),
+                            onPressed: () =>
+                                _playEpisode(context, episode, index: index),
+                          ),
+                        ],
                       );
                     },
                   ),
@@ -154,21 +146,10 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   }) {
     final parts = <String>[
       if (cached) '已缓存',
-      if (episode.duration != null) _formatDuration(episode.duration!),
+      if (episode.duration != null) formatAudioDuration(episode.duration!),
       fallback ?? episode.author ?? episode.sourceType.label,
     ];
     return parts.join(' · ');
-  }
-
-  String _formatDuration(Duration duration) {
-    final totalSeconds = duration.inSeconds;
-    final hours = totalSeconds ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    final seconds = totalSeconds % 60;
-    if (hours > 0) {
-      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    }
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   Future<void> _playEpisode(
@@ -336,17 +317,18 @@ class _ShowEpisodeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onPlay,
-      child: _QueueEpisodeContent(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: AudioListItem(
         coverUrl: episode.imageUrl,
         coverSize: 44,
         title: episode.title,
-        subtitle: [
+        metadata: [
           if (cached) '已缓存',
-          if (episode.duration != null) _formatDuration(episode.duration!),
+          if (episode.duration != null) formatAudioDuration(episode.duration!),
           episode.author ?? episode.sourceType.label,
         ].join(' · '),
+        onTap: onPlay,
         actions: [
           _CacheIconButton(
             cached: cached,
@@ -361,17 +343,6 @@ class _ShowEpisodeTile extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatDuration(Duration duration) {
-    final totalSeconds = duration.inSeconds;
-    final hours = totalSeconds ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    final seconds = totalSeconds % 60;
-    if (hours > 0) {
-      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    }
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
 
@@ -406,78 +377,17 @@ class _CacheIconButton extends StatelessWidget {
   }
 }
 
-class _QueueEpisodeContent extends StatelessWidget {
-  const _QueueEpisodeContent({
-    required this.coverUrl,
-    required this.title,
-    required this.subtitle,
-    required this.actions,
-    this.coverSize = 56,
-  });
-
-  final String? coverUrl;
-  final String title;
-  final String subtitle;
-  final List<Widget> actions;
-  final double coverSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _QueueCover(url: coverUrl, size: coverSize),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ...actions,
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _QueueCover extends StatelessWidget {
-  const _QueueCover({this.url, this.size = 56});
+  const _QueueCover({this.url});
 
   final String? url;
-  final double size;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
       child: SizedBox.square(
-        dimension: size,
+        dimension: 56,
         child: url == null
             ? ColoredBox(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,

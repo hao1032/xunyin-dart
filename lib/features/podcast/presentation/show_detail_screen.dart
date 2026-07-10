@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
 import '../../../core/text/plain_text.dart';
+import '../../audio/presentation/audio_list_item.dart';
 import '../../bilibili/data/bilibili_repository.dart';
 import '../../cache/data/audio_cache_repository.dart';
 import '../../library/data/library_repository.dart';
@@ -398,116 +399,91 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                   );
                   final cached = _cachedEpisodeIds.contains(episode.id);
                   final busy = _busyEpisodeIds.contains(episode.id);
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () {
-                        AppLogger.userAction(
-                          'open_episode',
-                          area: 'podcast',
-                          data: {
-                            'episodeId': episode.id,
-                            'title': episode.title,
-                            'showId': show.id,
-                          },
-                        );
-                        context.push(
-                          '/episode',
-                          extra: EpisodeScreenArgs(
-                            episode: episode,
-                            relatedShows: [show],
-                          ),
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            _EpisodeCover(url: episode.imageUrl),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    episode.title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          _episodeSubtitle(episode) ?? '',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.onSurfaceVariant,
-                                              ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _EpisodeActions(
-                                        cached: cached,
-                                        busy: busy,
-                                        queued: episodeQueued,
-                                        onToggleCache: () {
-                                          AppLogger.userAction(
-                                            'toggle_episode_cache',
-                                            area: 'cache',
-                                            data: {
-                                              'episodeId': episode.id,
-                                              'title': episode.title,
-                                              'cached': cached,
-                                            },
-                                          );
-                                          _toggleCache(episode);
-                                        },
-                                        onPlay: () => _playEpisode(episode),
-                                        onAddToQueue: () {
-                                          AppLogger.userAction(
-                                            'add_episode_to_queue',
-                                            area: 'player',
-                                            data: {
-                                              'episodeId': episode.id,
-                                              'title': episode.title,
-                                              'showId': show.id,
-                                            },
-                                          );
-                                          ref
-                                              .read(
-                                                playbackQueueProvider.notifier,
-                                              )
-                                              .add(episode);
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('已加入播放列表'),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                  return AudioListItem(
+                    coverUrl: episode.imageUrl,
+                    coverSize: 64,
+                    placeholderIcon: Icons.music_note,
+                    title: episode.title,
+                    metadata: _episodeSubtitle(episode) ?? '',
+                    onTap: () {
+                      AppLogger.userAction(
+                        'open_episode',
+                        area: 'podcast',
+                        data: {
+                          'episodeId': episode.id,
+                          'title': episode.title,
+                          'showId': show.id,
+                        },
+                      );
+                      context.push(
+                        '/episode',
+                        extra: EpisodeScreenArgs(
+                          episode: episode,
+                          relatedShows: [show],
                         ),
+                      );
+                    },
+                    actions: [
+                      IconButton(
+                        tooltip: episodeQueued ? '已加入播放列表' : '加入播放列表',
+                        icon: Icon(
+                          episodeQueued ? Icons.check : Icons.playlist_add,
+                        ),
+                        onPressed: episodeQueued
+                            ? null
+                            : () {
+                                AppLogger.userAction(
+                                  'add_episode_to_queue',
+                                  area: 'player',
+                                  data: {
+                                    'episodeId': episode.id,
+                                    'title': episode.title,
+                                    'showId': show.id,
+                                  },
+                                );
+                                ref
+                                    .read(playbackQueueProvider.notifier)
+                                    .add(episode);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('已加入播放列表')),
+                                );
+                              },
                       ),
-                    ),
+                      IconButton(
+                        tooltip: cached ? '已缓存' : '缓存到本地',
+                        icon: busy
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                cached
+                                    ? Icons.offline_pin
+                                    : Icons.download_outlined,
+                              ),
+                        onPressed: busy || cached
+                            ? null
+                            : () {
+                                AppLogger.userAction(
+                                  'toggle_episode_cache',
+                                  area: 'cache',
+                                  data: {
+                                    'episodeId': episode.id,
+                                    'title': episode.title,
+                                    'cached': cached,
+                                  },
+                                );
+                                _toggleCache(episode);
+                              },
+                      ),
+                      IconButton(
+                        tooltip: '播放',
+                        icon: const Icon(Icons.play_arrow),
+                        onPressed: () => _playEpisode(episode),
+                      ),
+                    ],
                   );
                 }),
               ],
@@ -522,8 +498,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   String? _episodeSubtitle(Episode episode) {
     final parts = <String>[
       if (episode.publishedAt != null)
-        _formatRelativeDate(episode.publishedAt!),
-      if (episode.duration != null) _formatDuration(episode.duration!),
+        formatAudioRelativeDate(episode.publishedAt!),
+      if (episode.duration != null) formatAudioDuration(episode.duration!),
       if (episode.author != null && episode.author!.isNotEmpty) episode.author!,
     ];
     if (parts.isEmpty) return null;
@@ -537,30 +513,6 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     return '订阅';
   }
 
-  String _formatRelativeDate(DateTime dateTime) {
-    final local = dateTime.toLocal();
-    final today = DateUtils.dateOnly(DateTime.now());
-    final day = DateUtils.dateOnly(local);
-    final days = today.difference(day).inDays;
-    if (days == 0) return '今天';
-    if (days == 1) return '昨天';
-    if (days > 1 && days < 7) return '$days天前';
-    if (days >= 7 && days < 30) return '${days ~/ 7}周前';
-    if (days >= 30 && days < 365) return '${days ~/ 30}个月前';
-    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
-  }
-
-  String _formatDuration(Duration duration) {
-    final totalSeconds = duration.inSeconds;
-    final hours = totalSeconds ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    final seconds = totalSeconds % 60;
-    if (hours > 0) {
-      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    }
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
-
   bool _isBilibiliCreatorShow(PodcastShow show) {
     return show.sourceType == SourceType.bilibili &&
         show.id.startsWith('bili-up-');
@@ -569,75 +521,6 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   bool _isRssShow(PodcastShow show) {
     return show.sourceType == SourceType.rss ||
         (show.feedUrl != null && show.feedUrl!.isNotEmpty);
-  }
-}
-
-class _EpisodeActions extends StatelessWidget {
-  const _EpisodeActions({
-    required this.cached,
-    required this.busy,
-    required this.queued,
-    required this.onToggleCache,
-    required this.onPlay,
-    required this.onAddToQueue,
-  });
-
-  final bool cached;
-  final bool busy;
-  final bool queued;
-  final VoidCallback onToggleCache;
-  final VoidCallback onPlay;
-  final VoidCallback onAddToQueue;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: queued ? '已加入播放列表' : '加入播放列表',
-          icon: Icon(queued ? Icons.check : Icons.playlist_add),
-          onPressed: queued ? null : onAddToQueue,
-        ),
-        IconButton(
-          tooltip: cached ? '已缓存' : '缓存到本地',
-          icon: busy
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(cached ? Icons.offline_pin : Icons.download_outlined),
-          onPressed: busy || cached ? null : onToggleCache,
-        ),
-        IconButton(
-          tooltip: '播放',
-          icon: const Icon(Icons.play_arrow),
-          onPressed: onPlay,
-        ),
-      ],
-    );
-  }
-}
-
-class _EpisodeCover extends StatelessWidget {
-  const _EpisodeCover({this.url});
-
-  final String? url;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: SizedBox.square(
-        dimension: 64,
-        child: url == null
-            ? ColoredBox(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: const Icon(Icons.music_note),
-              )
-            : Image.network(url!, fit: BoxFit.cover),
-      ),
-    );
   }
 }
 

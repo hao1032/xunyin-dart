@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../audio/presentation/audio_list_item.dart';
 import '../../player/presentation/mini_player.dart';
 import '../../podcast/domain/source_type.dart';
 import '../data/search_repository.dart';
@@ -210,112 +211,25 @@ class _SearchResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _Cover(url: result.imageUrl),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      result.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            [
-                              if (result.publishedAt != null)
-                                _formatRelativeDate(result.publishedAt!),
-                              if (result.duration != null)
-                                _formatDuration(result.duration!),
-                              result.subtitle ?? result.showTitle,
-                            ].whereType<String>().join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          enabled ? Icons.chevron_right : Icons.block,
-                          color: enabled
-                              ? Theme.of(context).colorScheme.onSurfaceVariant
-                              : Theme.of(context).disabledColor,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return AudioListItem(
+      coverUrl: result.imageUrl,
+      title: result.title,
+      metadata: [
+        if (result.publishedAt != null)
+          formatAudioRelativeDate(result.publishedAt!),
+        if (result.duration != null) formatAudioDuration(result.duration!),
+        result.subtitle ?? result.showTitle,
+      ].whereType<String>().join(' · '),
+      enabled: enabled,
+      onTap: onTap,
+      actions: [
+        Icon(
+          enabled ? Icons.chevron_right : Icons.block,
+          color: enabled
+              ? Theme.of(context).colorScheme.onSurfaceVariant
+              : Theme.of(context).disabledColor,
         ),
-      ),
-    );
-  }
-
-  String _formatRelativeDate(DateTime dateTime) {
-    final local = dateTime.toLocal();
-    final today = DateUtils.dateOnly(DateTime.now());
-    final day = DateUtils.dateOnly(local);
-    final days = today.difference(day).inDays;
-    if (days == 0) return '今天';
-    if (days == 1) return '昨天';
-    if (days > 1 && days < 7) return '$days天前';
-    if (days >= 7 && days < 30) return '${days ~/ 7}周前';
-    if (days >= 30 && days < 365) return '${days ~/ 30}个月前';
-    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
-  }
-
-  String _formatDuration(Duration duration) {
-    final totalSeconds = duration.inSeconds;
-    final hours = totalSeconds ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    final seconds = totalSeconds % 60;
-    if (hours > 0) {
-      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    }
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
-}
-
-class _Cover extends StatelessWidget {
-  const _Cover({this.url});
-
-  final String? url;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: SizedBox.square(
-        dimension: 56,
-        child: url == null
-            ? ColoredBox(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: const Icon(Icons.podcasts),
-              )
-            : Image.network(url!, fit: BoxFit.cover),
-      ),
+      ],
     );
   }
 }

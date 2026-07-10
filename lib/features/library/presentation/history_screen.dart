@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../audio/presentation/audio_list_item.dart';
+import '../../cache/data/audio_cache_repository.dart';
+import '../../player/data/playback_queue.dart';
+import '../../player/data/player_controller.dart';
 import '../../player/presentation/mini_player.dart';
 import '../../podcast/domain/episode.dart';
 import '../data/library_repository.dart';
@@ -16,11 +20,14 @@ class HistoryScreen extends ConsumerStatefulWidget {
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   late Future<List<Episode>> _historyFuture;
+  final Set<String> _cachedEpisodeIds = {};
+  final Set<String> _busyEpisodeIds = {};
 
   @override
   void initState() {
     super.initState();
     _historyFuture = _loadHistory();
+    _loadCachedEpisodes();
   }
 
   Future<List<Episode>> _loadHistory() async {
@@ -31,6 +38,28 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       data: {'historyCount': history.length},
     );
     return history;
+  }
+
+  Future<void> _loadCachedEpisodes() async {
+    try {
+      final cached = await ref
+          .read(audioCacheRepositoryProvider)
+          .cachedEpisodes();
+      if (mounted) {
+        setState(() {
+          _cachedEpisodeIds
+            ..clear()
+            ..addAll(cached.map((item) => item.episode.id));
+        });
+      }
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'load_history_cache_state',
+        error,
+        area: 'cache',
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   @override
@@ -55,33 +84,66 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   itemCount: history.length,
                   itemBuilder: (context, index) {
                     final episode = history[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      child: ListTile(
-                        leading: const Icon(Icons.history),
-                        title: Text(
-                          episode.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                    final cached = _cachedEpisodeIds.contains(episode.id);
+                    final busy = _busyEpisodeIds.contains(episode.id);
+                    return AudioListItem(
+                      coverUrl: episode.imageUrl,
+                      title: episode.title,
+                      metadata: [
+                        if (episode.publishedAt != null)
+                          formatAudioRelativeDate(episode.publishedAt!),
+                        if (episode.duration != null)
+                          formatAudioDuration(episode.duration!),
+                        episode.author ?? episode.sourceType.label,
+                      ].join(' · '),
+                      onTap: () {
+                        AppLogger.userAction(
+                          'open_history_episode',
+                          area: 'library',
+                          data: {
+                            'episodeId': episode.id,
+                            'title': episode.title,
+                          },
+                        );
+                        context.push('/episode', extra: episode);
+                      },
+                      actions: [
+                        IconButton(
+                          tooltip: '加入播放列表',
+                          icon: const Icon(Icons.playlist_add),
+                          onPressed: () {
+                            ref
+                                .read(playbackQueueProvider.notifier)
+                                .add(episode);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('已加入播放列表')),
+                            );
+                          },
                         ),
-                        subtitle: Text(
-                          episode.author ?? episode.sourceType.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        IconButton(
+                          tooltip: cached ? '已缓存' : '缓存到本地',
+                          icon: busy
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(
+                                  cached
+                                      ? Icons.offline_pin
+                                      : Icons.download_outlined,
+                                ),
+                          onPressed: busy || cached
+                              ? null
+                              : () => _toggleCache(episode),
                         ),
-                        trailing: const Icon(Icons.play_arrow),
-                        onTap: () {
-                          AppLogger.userAction(
-                            'open_history_episode',
-                            area: 'library',
-                            data: {
-                              'episodeId': episode.id,
-                              'title': episode.title,
-                            },
-                          );
-                          context.push('/episode', extra: episode);
-                        },
-                      ),
+                        IconButton(
+                          tooltip: '播放',
+                          icon: const Icon(Icons.play_arrow),
+                          onPressed: () => _playEpisode(episode),
+                        ),
+                      ],
                     );
                   },
                 );
@@ -92,5 +154,56 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _playEpisode(Episode episode) async {
+    try {
+      await ref.read(playbackControllerProvider).play(episode);
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'play_history_episode',
+        error,
+        area: 'player',
+        stackTrace: stackTrace,
+        data: {'episodeId': episode.id, 'title': episode.title},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    }
+  }
+
+  Future<void> _toggleCache(Episode episode) async {
+    if (_busyEpisodeIds.contains(episode.id)) return;
+    if (_cachedEpisodeIds.contains(episode.id)) return;
+    setState(() => _busyEpisodeIds.add(episode.id));
+    try {
+      await ref.read(audioCacheRepositoryProvider).cache(episode);
+      if (mounted) {
+        setState(() => _cachedEpisodeIds.add(episode.id));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
+      }
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'toggle_history_cache',
+        error,
+        area: 'cache',
+        stackTrace: stackTrace,
+        data: {'episodeId': episode.id, 'title': episode.title},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busyEpisodeIds.remove(episode.id));
+      }
+    }
   }
 }

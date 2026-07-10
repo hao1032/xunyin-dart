@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../audio/presentation/audio_list_item.dart';
+import '../../player/data/playback_queue.dart';
 import '../../player/data/player_controller.dart';
 import '../../player/presentation/mini_player.dart';
 import '../data/audio_cache_repository.dart';
@@ -65,38 +67,48 @@ class _CacheManagementScreenState extends ConsumerState<CacheManagementScreen> {
                       ),
                     ),
                     ...cached.map(
-                      (item) => Card(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        child: ListTile(
-                          leading: const Icon(Icons.offline_pin),
-                          title: Text(
-                            item.episode.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                      (item) => AudioListItem(
+                        coverUrl: item.episode.imageUrl,
+                        title: item.episode.title,
+                        metadata: [
+                          if (item.episode.publishedAt != null)
+                            formatAudioRelativeDate(item.episode.publishedAt!),
+                          if (item.episode.duration != null)
+                            formatAudioDuration(item.episode.duration!),
+                          item.episode.author ?? item.episode.sourceType.label,
+                          _formatBytes(item.bytes),
+                        ].join(' · '),
+                        onTap: () =>
+                            context.push('/episode', extra: item.episode),
+                        actions: [
+                          IconButton(
+                            tooltip: '加入播放列表',
+                            icon: const Icon(Icons.playlist_add),
+                            onPressed: () {
+                              ref
+                                  .read(playbackQueueProvider.notifier)
+                                  .add(item.episode);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('已加入播放列表')),
+                              );
+                            },
                           ),
-                          subtitle: Text(
-                            '${item.episode.author ?? item.episode.sourceType.label} · ${_formatBytes(item.bytes)}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          IconButton(
+                            tooltip: '已缓存',
+                            icon: const Icon(Icons.offline_pin),
+                            onPressed: null,
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                tooltip: '播放缓存',
-                                icon: const Icon(Icons.play_arrow),
-                                onPressed: () => _playCached(item),
-                              ),
-                              IconButton(
-                                tooltip: '删除缓存',
-                                icon: const Icon(Icons.delete_outline),
-                                onPressed: () => _removeCached(item),
-                              ),
-                            ],
+                          IconButton(
+                            tooltip: '播放缓存',
+                            icon: const Icon(Icons.play_arrow),
+                            onPressed: () => _playCached(item),
                           ),
-                          onTap: () =>
-                              context.push('/episode', extra: item.episode),
-                        ),
+                          IconButton(
+                            tooltip: '删除缓存',
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => _removeCached(item),
+                          ),
+                        ],
                       ),
                     ),
                   ],
