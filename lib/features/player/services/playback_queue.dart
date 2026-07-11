@@ -43,8 +43,13 @@ class PlaybackQueueController extends Notifier<PlaybackQueueState> {
   }
 
   void playNow(Episode episode) {
-    if (state.items.any((item) => item.containsEpisode(episode.id))) {
-      state = state.copyWith(current: episode);
+    final existingIndex = state.items.indexWhere(
+      (item) => item.containsEpisode(episode.id),
+    );
+    if (existingIndex >= 0) {
+      final items = [...state.items];
+      items[existingIndex] = items[existingIndex].markPlayed(episode.id);
+      state = PlaybackQueueState(current: episode, items: items);
       _persist();
       AppLogger.result(
         'queue_play_now',
@@ -193,6 +198,7 @@ class PlaybackQueueEntry {
     required this.type,
     required this.episodes,
     this.subtitle,
+    this.lastPlayedEpisodeId,
   });
 
   factory PlaybackQueueEntry.episode(Episode episode) {
@@ -218,11 +224,35 @@ class PlaybackQueueEntry {
   final String id;
   final String title;
   final String? subtitle;
+  final String? lastPlayedEpisodeId;
   final PlaybackQueueEntryType type;
   final List<Episode> episodes;
 
   bool containsEpisode(String episodeId) {
     return episodes.any((episode) => episode.id == episodeId);
+  }
+
+  Episode get playableEpisode {
+    final lastPlayedEpisodeId = this.lastPlayedEpisodeId;
+    if (lastPlayedEpisodeId == null) return episodes.first;
+    return episodes
+            .where((episode) => episode.id == lastPlayedEpisodeId)
+            .firstOrNull ??
+        episodes.first;
+  }
+
+  PlaybackQueueEntry markPlayed(String episodeId) {
+    if (type != PlaybackQueueEntryType.series || !containsEpisode(episodeId)) {
+      return this;
+    }
+    return PlaybackQueueEntry._(
+      id: id,
+      title: title,
+      subtitle: subtitle,
+      type: type,
+      episodes: episodes,
+      lastPlayedEpisodeId: episodeId,
+    );
   }
 
   Map<String, Object?> toJson() {
@@ -231,6 +261,7 @@ class PlaybackQueueEntry {
       'title': title,
       'subtitle': subtitle,
       'type': type.name,
+      'lastPlayedEpisodeId': lastPlayedEpisodeId,
       'episodes': episodes.map((episode) => episode.toJson()).toList(),
     };
   }
@@ -251,6 +282,7 @@ class PlaybackQueueEntry {
       subtitle: json['subtitle'] as String?,
       type: type,
       episodes: episodes,
+      lastPlayedEpisodeId: json['lastPlayedEpisodeId'] as String?,
     );
   }
 }

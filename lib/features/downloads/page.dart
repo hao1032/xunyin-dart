@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/app_logger.dart';
 import '../../core/display_formatters.dart';
-import '../app_list_item.dart';
+import '../../shared/wigets/app_list_item.dart';
 import '../player/services/playback_queue.dart';
 import '../player/services/controller.dart';
 import '../player/pages/mini.dart';

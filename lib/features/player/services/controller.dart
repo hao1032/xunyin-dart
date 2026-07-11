@@ -54,6 +54,7 @@ class PlaybackController {
   StreamSubscription<PlayerState>? _playerStateSubscription;
   Timer? _positionTimer;
   Episode? _currentEpisode;
+  String? _preparingEpisodeId;
   Duration? _lastSavedPosition;
 
   AudioPlayer get player => _player;
@@ -67,6 +68,35 @@ class PlaybackController {
   }
 
   Future<void> play(Episode episode) async {
+    if (_preparingEpisodeId == episode.id) {
+      AppLogger.result(
+        'play_episode_ignored',
+        area: 'player',
+        data: {'episodeId': episode.id, 'reason': 'preparing'},
+      );
+      return;
+    }
+    if (_currentEpisode?.id == episode.id) {
+      _queue?.playNow(episode);
+      unawaited(
+        _player.play().catchError((Object error, StackTrace stackTrace) {
+          AppLogger.failure(
+            'resume_current_episode',
+            error,
+            area: 'player',
+            stackTrace: stackTrace,
+            data: {'episodeId': episode.id, 'title': episode.title},
+          );
+        }),
+      );
+      AppLogger.result(
+        'resume_current_episode',
+        area: 'player',
+        data: {'episodeId': episode.id, 'title': episode.title},
+      );
+      return;
+    }
+    _preparingEpisodeId = episode.id;
     AppLogger.userAction(
       'play_episode',
       area: 'player',
@@ -78,13 +108,49 @@ class PlaybackController {
         'cid': episode.cid,
       },
     );
-    await _saveCurrentPosition(reason: 'switch');
-    _queue?.playNow(episode);
-    final session = await AudioSession.instance;
-    await session.configure(const AudioSessionConfiguration.speech());
-    final downloadedPath = await _downloadRepository.localPathFor(episode);
-    if (downloadedPath != null) {
-      await _player.setFilePath(downloadedPath);
+    try {
+      await _saveCurrentPosition(reason: 'switch');
+      _queue?.playNow(episode);
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.speech());
+      final downloadedPath = await _downloadRepository.localPathFor(episode);
+      if (downloadedPath != null) {
+        await _player.setFilePath(downloadedPath);
+        _currentEpisode = episode;
+        _lastSavedPosition = null;
+        await _seekToSavedPosition(episode);
+        await _library.recordPlayback(episode);
+        _startPositionTimer();
+        unawaited(
+          _player.play().catchError((Object error, StackTrace stackTrace) {
+            AppLogger.failure(
+              'play_downloaded_episode',
+              error,
+              area: 'player',
+              stackTrace: stackTrace,
+              data: {'episodeId': episode.id, 'title': episode.title},
+            );
+          }),
+        );
+        AppLogger.result(
+          'play_downloaded_episode',
+          area: 'player',
+          data: {'episodeId': episode.id, 'path': downloadedPath},
+        );
+        return;
+      }
+      final info = await _playbackInfo.playbackInfo(episode);
+      AppLogger.result(
+        'prepare_episode_source',
+        area: 'player',
+        data: {'episodeId': episode.id, 'source': episode.sourceType.name},
+      );
+      switch (info) {
+        case EpisodeUrlPlaybackInfo(:final url):
+          await _player.setUrl(url);
+        case EpisodeCustomPlaybackInfo(:final source):
+          await _player.setAudioSource(source);
+      }
       _currentEpisode = episode;
       _lastSavedPosition = null;
       await _seekToSavedPosition(episode);
@@ -102,45 +168,15 @@ class PlaybackController {
         }),
       );
       AppLogger.result(
-        'play_downloaded_episode',
+        'play_episode',
         area: 'player',
-        data: {'episodeId': episode.id, 'path': downloadedPath},
+        data: {'episodeId': episode.id, 'title': episode.title},
       );
-      return;
+    } finally {
+      if (_preparingEpisodeId == episode.id) {
+        _preparingEpisodeId = null;
+      }
     }
-    final info = await _playbackInfo.playbackInfo(episode);
-    AppLogger.result(
-      'prepare_episode_source',
-      area: 'player',
-      data: {'episodeId': episode.id, 'source': episode.sourceType.name},
-    );
-    switch (info) {
-      case EpisodeUrlPlaybackInfo(:final url):
-        await _player.setUrl(url);
-      case EpisodeCustomPlaybackInfo(:final source):
-        await _player.setAudioSource(source);
-    }
-    _currentEpisode = episode;
-    _lastSavedPosition = null;
-    await _seekToSavedPosition(episode);
-    await _library.recordPlayback(episode);
-    _startPositionTimer();
-    unawaited(
-      _player.play().catchError((Object error, StackTrace stackTrace) {
-        AppLogger.failure(
-          'play_episode',
-          error,
-          area: 'player',
-          stackTrace: stackTrace,
-          data: {'episodeId': episode.id, 'title': episode.title},
-        );
-      }),
-    );
-    AppLogger.result(
-      'play_episode',
-      area: 'player',
-      data: {'episodeId': episode.id, 'title': episode.title},
-    );
   }
 
   void _startPositionTimer() {

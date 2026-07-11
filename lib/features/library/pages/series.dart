@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/app_logger.dart';
-import '../../app_list_item.dart';
+import '../../../shared/wigets/app_list_item.dart';
 import '../../series/model.dart';
 import '../../player/pages/mini.dart';
 import '../repository.dart';

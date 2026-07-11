@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/app_logger.dart';
 import '../../../core/app_layout.dart';
+import '../../../shared/wigets/app_action_card.dart';
 import '../../player/pages/mini.dart';
 
 class LibraryPage extends StatelessWidget {
@@ -74,7 +75,7 @@ class LibraryPage extends StatelessWidget {
                         subtitle: '管理订阅、历史记录和离线音频',
                       ),
                       const SizedBox(height: AppSpacing.item),
-                      _LibraryActionCard(
+                      AppActionCard(
                         icon: Icons.rss_feed_rounded,
                         title: '我的频道',
                         subtitle: '合集、UP主与 RSS 播客',
@@ -87,7 +88,7 @@ class LibraryPage extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 10),
-                      _LibraryActionCard(
+                      AppActionCard(
                         icon: Icons.history_rounded,
                         title: '收听历史',
                         subtitle: '继续最近播放的内容',
@@ -97,7 +98,7 @@ class LibraryPage extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 10),
-                      _LibraryActionCard(
+                      AppActionCard(
                         icon: Icons.download_done_rounded,
                         title: '离线内容',
                         subtitle: '管理已下载的单集',
@@ -117,67 +118,6 @@ class LibraryPage extends StatelessWidget {
           ),
           if (showMiniPlayer) const MiniPlayer(),
         ],
-      ),
-    );
-  }
-}
-
-class _LibraryActionCard extends StatelessWidget {
-  const _LibraryActionCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: colors.secondaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: colors.onSecondaryContainer),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
-            ],
-          ),
-        ),
       ),
     );
   }

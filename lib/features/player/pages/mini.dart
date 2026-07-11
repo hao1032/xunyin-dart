@@ -30,13 +30,10 @@ class MiniPlayer extends ConsumerWidget {
             top: false,
             bottom: includeBottomSafeArea,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+              padding: const EdgeInsets.symmetric(vertical: 6),
               child: Material(
                 color: colors.surfaceContainer,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: colors.outlineVariant),
-                ),
+                shape: Border.all(color: colors.outlineVariant),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: () {
@@ -114,21 +111,18 @@ class _MiniCover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: SizedBox.square(
-        dimension: 46,
-        child: url == null
-            ? ColoredBox(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                child: const Icon(Icons.graphic_eq_rounded),
-              )
-            : Image.network(
-                url!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const Icon(Icons.graphic_eq_rounded),
-              ),
-      ),
+    return SizedBox.square(
+      dimension: 46,
+      child: url == null
+          ? ColoredBox(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: const Icon(Icons.graphic_eq_rounded),
+            )
+          : Image.network(
+              url!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const Icon(Icons.graphic_eq_rounded),
+            ),
     );
   }
 }

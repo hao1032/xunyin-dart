@@ -6,7 +6,7 @@ import '../../core/app_logger.dart';
 import '../../core/display_formatters.dart';
 import '../../core/plain_text.dart';
 import '../../core/app_layout.dart';
-import '../app_list_item.dart';
+import '../../shared/wigets/app_list_item.dart';
 import '../downloads/repository.dart';
 import '../library/repository.dart';
 import '../player/pages/mini.dart';
@@ -329,11 +329,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                       ),
                       if (description != null) ...[
                         const SizedBox(height: 12),
-                        Text(
-                          description,
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        Text(description),
                       ],
                       const SizedBox(height: 20),
                       AppSectionTitle(

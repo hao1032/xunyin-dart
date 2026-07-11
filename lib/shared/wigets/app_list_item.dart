@@ -107,16 +107,18 @@ class AppCover extends StatelessWidget {
     required this.url,
     required this.size,
     required this.icon,
+    this.borderRadius = 0,
   });
 
   final String? url;
   final double size;
   final IconData icon;
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(borderRadius),
       child: SizedBox.square(
         dimension: size,
         child: url == null
