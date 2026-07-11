@@ -12,17 +12,17 @@ import '../../player/services/playback_queue.dart';
 import '../../player/services/controller.dart';
 import '../../player/pages/mini.dart';
 import '../model.dart';
-import '../../channel/model.dart';
+import '../../series/model.dart';
 
 class EpisodePage extends ConsumerStatefulWidget {
   const EpisodePage({
     super.key,
     required this.episode,
-    this.relatedShows = const [],
+    this.relatedSeries = const [],
   });
 
   final Episode episode;
-  final List<AudioShow> relatedShows;
+  final List<Series> relatedSeries;
 
   @override
   ConsumerState<EpisodePage> createState() => _EpisodePageState();
@@ -120,7 +120,7 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
   @override
   Widget build(BuildContext context) {
     final episode = widget.episode;
-    final relatedShows = _dedupeShows(widget.relatedShows);
+    final relatedSeries = _dedupeSeries(widget.relatedSeries);
     final queue = ref.watch(playbackQueueProvider);
     final isQueued = queue.items.any(
       (item) => item.containsEpisode(episode.id),
@@ -179,11 +179,11 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                               ),
                         ),
                       ],
-                      if (relatedShows.isNotEmpty) ...[
+                      if (relatedSeries.isNotEmpty) ...[
                         const SizedBox(height: 10),
-                        _RelatedShowLinks(
+                        _RelatedSeriesLinks(
                           episode: episode,
-                          shows: relatedShows,
+                          series: relatedSeries,
                         ),
                       ] else ...[
                         const SizedBox(height: 10),
@@ -321,43 +321,43 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
     return '${(mb / 1024).toStringAsFixed(1)} GB';
   }
 
-  List<AudioShow> _dedupeShows(List<AudioShow> shows) {
+  List<Series> _dedupeSeries(List<Series> series) {
     final seen = <String>{};
     return [
-      for (final show in shows)
-        if (seen.add(show.id)) show,
+      for (final item in series)
+        if (seen.add(item.id)) item,
     ];
   }
 }
 
-class _RelatedShowLinks extends StatelessWidget {
-  const _RelatedShowLinks({required this.episode, required this.shows});
+class _RelatedSeriesLinks extends StatelessWidget {
+  const _RelatedSeriesLinks({required this.episode, required this.series});
 
   final Episode episode;
-  final List<AudioShow> shows;
+  final List<Series> series;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 8,
       runSpacing: 4,
-      children: shows.map((show) {
+      children: series.map((item) {
         return InkWell(
           borderRadius: BorderRadius.circular(4),
           onTap: () {
             AppLogger.userAction(
-              'open_related_show',
+              'open_related_series',
               area: 'podcast',
               data: {
                 'episodeId': episode.id,
-                'showId': show.id,
-                'showTitle': show.title,
+                'seriesId': item.id,
+                'seriesTitle': item.title,
               },
             );
-            context.push('/channel', extra: show);
+            context.push('/series', extra: item);
           },
           child: Text(
-            '${show.shortLabel}：${show.title}',
+            '${item.shortLabel}：${item.title}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -371,8 +371,8 @@ class _RelatedShowLinks extends StatelessWidget {
 }
 
 class EpisodePageArgs {
-  const EpisodePageArgs({required this.episode, this.relatedShows = const []});
+  const EpisodePageArgs({required this.episode, this.relatedSeries = const []});
 
   final Episode episode;
-  final List<AudioShow> relatedShows;
+  final List<Series> relatedSeries;
 }

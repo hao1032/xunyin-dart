@@ -5,12 +5,12 @@ import '../../features/cache/page.dart';
 import '../../features/home/page.dart';
 import '../../features/library/pages/history.dart';
 import '../../features/library/pages/main.dart';
-import '../../features/library/pages/channels.dart';
+import '../../features/library/pages/series.dart';
 import '../../features/podcast/model.dart';
-import '../../features/channel/model.dart';
+import '../../features/series/model.dart';
 import '../../features/podcast/pages/episode.dart';
 import '../../features/player/pages/main.dart';
-import '../../features/podcast/pages/channel_detail.dart';
+import '../../features/podcast/pages/series_detail.dart';
 import '../../features/player/pages/queue.dart';
 import '../../features/search/model.dart';
 import '../../features/search/pages/result.dart';
@@ -33,7 +33,7 @@ final appRouter = GoRouter(
     GoRoute(path: '/library', builder: (context, state) => const LibraryPage()),
     GoRoute(
       path: '/subscriptions',
-      builder: (context, state) => const ChannelsPage(),
+      builder: (context, state) => const SeriesPage(),
     ),
     GoRoute(path: '/history', builder: (context, state) => const HistoryPage()),
     GoRoute(
@@ -47,11 +47,11 @@ final appRouter = GoRouter(
       builder: (context, state) => const SettingsPage(),
     ),
     GoRoute(
-      path: '/channel',
+      path: '/series',
       builder: (context, state) {
-        final show = state.extra;
-        if (show is! AudioShow) return const _MissingRouteData();
-        return ChannelDetailPage(show: show);
+        final series = state.extra;
+        if (series is! Series) return const _MissingRouteData();
+        return SeriesDetailPage(series: series);
       },
     ),
     GoRoute(
@@ -61,7 +61,7 @@ final appRouter = GoRouter(
         if (extra is EpisodePageArgs) {
           return EpisodePage(
             episode: extra.episode,
-            relatedShows: extra.relatedShows,
+            relatedSeries: extra.relatedSeries,
           );
         }
         if (extra is Episode) return EpisodePage(episode: extra);

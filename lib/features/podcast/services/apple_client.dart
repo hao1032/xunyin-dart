@@ -71,7 +71,7 @@ class ApplePodcastClient {
         audioUrl: json['episodeUrl'] as String?,
         duration: _durationFromMillis(json['trackTimeMillis'] as num?),
         publishedAt: DateTime.tryParse(json['releaseDate'] as String? ?? ''),
-        showTitle: collectionName,
+        seriesTitle: collectionName,
       );
     }).toList();
     AppLogger.result(

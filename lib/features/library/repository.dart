@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/storage/library_store.dart';
 import '../podcast/model.dart';
-import '../channel/model.dart';
+import '../series/model.dart';
 
 final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {
   return LibraryRepository(ref.watch(libraryStoreProvider));
@@ -14,28 +14,28 @@ class LibraryRepository {
 
   final LibraryStore _store;
 
-  Future<List<AudioShow>> subscriptions() => _store.loadSubscriptions();
+  Future<List<Series>> subscriptions() => _store.loadSubscriptions();
 
-  Future<bool> isSubscribed(String showId) async {
-    final shows = await subscriptions();
-    return shows.any((show) => show.id == showId);
+  Future<bool> isSubscribed(String seriesId) async {
+    final series = await subscriptions();
+    return series.any((item) => item.id == seriesId);
   }
 
-  Future<void> subscribe(AudioShow show) async {
-    await _store.saveSubscription(show);
+  Future<void> subscribe(Series series) async {
+    await _store.saveSubscription(series);
     AppLogger.result(
       'save_subscription',
       area: 'library',
-      data: {'showId': show.id, 'title': show.title},
+      data: {'seriesId': series.id, 'title': series.title},
     );
   }
 
-  Future<void> unsubscribe(String showId) async {
-    await _store.removeSubscription(showId);
+  Future<void> unsubscribe(String seriesId) async {
+    await _store.removeSubscription(seriesId);
     AppLogger.result(
       'remove_subscription',
       area: 'library',
-      data: {'showId': showId},
+      data: {'seriesId': seriesId},
     );
   }
 

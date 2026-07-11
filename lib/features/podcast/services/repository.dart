@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/logging/app_logger.dart';
 import '../../../core/network/http_client.dart';
 import '../../search/model.dart';
-import '../../channel/model.dart';
+import '../../series/model.dart';
 import 'apple_client.dart';
 import 'rss_parser.dart';
 
@@ -27,7 +27,7 @@ class PodcastRepository {
     return _appleClient.search(keyword);
   }
 
-  Future<AudioShow> loadRssShow(SearchResult result) async {
+  Future<Series> loadRssSeries(SearchResult result) async {
     final feedUrl = result.feedUrl;
     if (feedUrl == null || feedUrl.isEmpty) {
       throw ArgumentError('搜索结果缺少 RSS feedUrl');
@@ -35,9 +35,9 @@ class PodcastRepository {
     return loadRssFeed(feedUrl, title: result.title);
   }
 
-  Future<AudioShow> loadRssFeed(String feedUrl, {String? title}) async {
+  Future<Series> loadRssFeed(String feedUrl, {String? title}) async {
     AppLogger.result(
-      'load_rss_show',
+      'load_rss_series',
       area: 'podcast',
       message: 'request',
       data: {'feedUrl': feedUrl, 'title': ?title},
@@ -47,16 +47,16 @@ class PodcastRepository {
       options: Options(responseType: ResponseType.plain),
     );
     final xml = response.data?.toString() ?? '';
-    final show = _rssParser.parse(xml, feedUrl: feedUrl);
+    final series = _rssParser.parse(xml, feedUrl: feedUrl);
     AppLogger.result(
-      'load_rss_show',
+      'load_rss_series',
       area: 'podcast',
       data: {
-        'showId': show.id,
-        'title': show.title,
-        'episodeCount': show.episodes.length,
+        'seriesId': series.id,
+        'title': series.title,
+        'episodeCount': series.episodes.length,
       },
     );
-    return show;
+    return series;
   }
 }

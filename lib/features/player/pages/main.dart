@@ -6,7 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../../core/logging/app_logger.dart';
 import '../../../core/formatters/audio_formatters.dart';
 import '../../../core/widgets/app_layout.dart';
-import '../../channel/model.dart';
+import '../../series/model.dart';
 import '../../bilibili/services/repository.dart';
 import '../../library/repository.dart';
 import '../../podcast/model.dart';
@@ -84,7 +84,7 @@ class PlayerPage extends ConsumerWidget {
                       _PodcastLink(
                         episode: episode,
                         queue: queue,
-                        onTap: () => _openPodcast(context, ref, episode, queue),
+                        onTap: () => _openSeries(context, ref, episode, queue),
                       ),
                       const SizedBox(height: 24),
                       Card(
@@ -161,23 +161,23 @@ class PlayerPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _openPodcast(
+  Future<void> _openSeries(
     BuildContext context,
     WidgetRef ref,
     Episode episode,
     PlaybackQueueState queue,
   ) async {
     AppLogger.userAction(
-      'open_show_from_player',
+      'open_series_from_player',
       area: 'player',
-      data: {'episodeId': episode.id, 'showId': episode.showId},
+      data: {'episodeId': episode.id, 'seriesId': episode.seriesId},
     );
-    final show = await _showForEpisode(ref, episode, queue);
+    final series = await _seriesForEpisode(ref, episode, queue);
     if (!context.mounted) return;
-    context.push('/channel', extra: show);
+    context.push('/series', extra: series);
   }
 
-  Future<AudioShow> _showForEpisode(
+  Future<Series> _seriesForEpisode(
     WidgetRef ref,
     Episode episode,
     PlaybackQueueState queue,
@@ -185,35 +185,35 @@ class PlayerPage extends ConsumerWidget {
     final subscriptions = await ref
         .read(libraryRepositoryProvider)
         .subscriptions();
-    final subscribed = subscriptions.where((show) {
-      return show.id == episode.showId ||
-          show.episodes.any((item) => item.id == episode.id);
+    final subscribed = subscriptions.where((series) {
+      return series.id == episode.seriesId ||
+          series.episodes.any((item) => item.id == episode.id);
     }).firstOrNull;
     if (subscribed != null) return subscribed;
 
     if (episode.sourceType == SourceType.bilibili && episode.bvid != null) {
-      final show = await _resolveBilibiliShow(ref, episode);
-      if (show != null) return show;
+      final series = await _resolveBilibiliSeries(ref, episode);
+      if (series != null) return series;
     }
 
-    final queuedShow = queue.items.where((entry) {
-      return entry.type == PlaybackQueueEntryType.channel &&
+    final queuedSeries = queue.items.where((entry) {
+      return entry.type == PlaybackQueueEntryType.series &&
           entry.containsEpisode(episode.id);
     }).firstOrNull;
-    if (queuedShow != null) {
-      return _showFromEpisode(
-        id: queuedShow.id,
-        title: queuedShow.title,
+    if (queuedSeries != null) {
+      return _seriesFromEpisode(
+        id: queuedSeries.id,
+        title: queuedSeries.title,
         originalUrl: episode.originalUrl,
         author: episode.author,
-        imageUrl: queuedShow.episodes.first.imageUrl ?? episode.imageUrl,
-        episodes: queuedShow.episodes,
+        imageUrl: queuedSeries.episodes.first.imageUrl ?? episode.imageUrl,
+        episodes: queuedSeries.episodes,
         episode: episode,
       );
     }
 
-    return _showFromEpisode(
-      id: episode.showId,
+    return _seriesFromEpisode(
+      id: episode.seriesId,
       title: episode.author ?? episode.sourceType.label,
       originalUrl: episode.originalUrl,
       author: episode.author,
@@ -223,7 +223,7 @@ class PlayerPage extends ConsumerWidget {
     );
   }
 
-  AudioShow _showFromEpisode({
+  Series _seriesFromEpisode({
     required String id,
     required String title,
     required String originalUrl,
@@ -233,7 +233,7 @@ class PlayerPage extends ConsumerWidget {
     required Episode episode,
   }) {
     if (episode.sourceType != SourceType.bilibili) {
-      return RssPodcastShow(
+      return RssPodcastSeries(
         id: id,
         title: title,
         originalUrl: originalUrl,
@@ -243,8 +243,8 @@ class PlayerPage extends ConsumerWidget {
         episodes: episodes,
       );
     }
-    if (episode.showId.startsWith('bili-up-')) {
-      return BilibiliCreatorShow(
+    if (episode.seriesId.startsWith('bili-up-')) {
+      return BilibiliCreatorSeries(
         id: id,
         title: title,
         originalUrl: originalUrl,
@@ -253,7 +253,7 @@ class PlayerPage extends ConsumerWidget {
         episodes: episodes,
       );
     }
-    return BilibiliCollectionShow(
+    return BilibiliCollectionSeries(
       id: id,
       title: title,
       originalUrl: originalUrl,
@@ -263,10 +263,7 @@ class PlayerPage extends ConsumerWidget {
     );
   }
 
-  Future<AudioShow?> _resolveBilibiliShow(
-    WidgetRef ref,
-    Episode episode,
-  ) async {
+  Future<Series?> _resolveBilibiliSeries(WidgetRef ref, Episode episode) async {
     try {
       final context = await ref
           .read(bilibiliRepositoryProvider)
@@ -282,17 +279,17 @@ class PlayerPage extends ConsumerWidget {
               bvid: episode.bvid,
             ),
           );
-      final collection = context.collectionShow;
-      if (collection != null && collection.id == episode.showId) {
+      final collection = context.collectionSeries;
+      if (collection != null && collection.id == episode.seriesId) {
         return collection;
       }
-      if (episode.showId.startsWith('bili-season-') && collection != null) {
+      if (episode.seriesId.startsWith('bili-season-') && collection != null) {
         return collection;
       }
-      return context.creatorShow;
+      return context.creatorSeries;
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'resolve_show_from_player',
+        'resolve_series_from_player',
         error,
         area: 'player',
         stackTrace: stackTrace,
@@ -304,8 +301,8 @@ class PlayerPage extends ConsumerWidget {
 
   String? _rssFeedUrl(Episode episode) {
     if (episode.sourceType != SourceType.rss) return null;
-    if (!episode.showId.startsWith('rss-')) return null;
-    final feedUrl = episode.showId.substring('rss-'.length);
+    if (!episode.seriesId.startsWith('rss-')) return null;
+    final feedUrl = episode.seriesId.substring('rss-'.length);
     return feedUrl.isEmpty ? null : feedUrl;
   }
 }
@@ -334,11 +331,11 @@ class _PodcastLink extends StatelessWidget {
   }
 
   String _podcastName() {
-    final queuedShow = queue.items.where((entry) {
-      return entry.type == PlaybackQueueEntryType.channel &&
+    final queuedSeries = queue.items.where((entry) {
+      return entry.type == PlaybackQueueEntryType.series &&
           entry.containsEpisode(episode.id);
     }).firstOrNull;
-    return queuedShow?.title ?? episode.author ?? episode.sourceType.label;
+    return queuedSeries?.title ?? episode.author ?? episode.sourceType.label;
   }
 }
 

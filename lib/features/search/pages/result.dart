@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/app_logger.dart';
-import '../../channel/model.dart';
+import '../../series/model.dart';
 import '../../bilibili/services/repository.dart';
 import '../../podcast/services/repository.dart';
 import '../../podcast/model.dart';
@@ -35,10 +35,11 @@ class _SearchResultPageState extends ConsumerState<SearchResultPage> {
           .resolveEpisodeContext(result);
       return EpisodePageArgs(
         episode: episodeContext.episode,
-        relatedShows: [
-          if (episodeContext.collectionShow != null)
-            episodeContext.collectionShow!,
-          if (episodeContext.creatorShow != null) episodeContext.creatorShow!,
+        relatedSeries: [
+          if (episodeContext.collectionSeries != null)
+            episodeContext.collectionSeries!,
+          if (episodeContext.creatorSeries != null)
+            episodeContext.creatorSeries!,
         ],
       );
     }
@@ -46,41 +47,46 @@ class _SearchResultPageState extends ConsumerState<SearchResultPage> {
     if (result.audioUrl != null && result.audioUrl!.isNotEmpty) {
       final episode = Episode(
         id: result.id,
-        showId: _showId(result),
+        seriesId: _seriesId(result),
         title: result.title,
         sourceType: result.sourceType,
         originalUrl: result.originalUrl,
         description: result.description,
-        author: result.showTitle ?? result.subtitle,
+        author: result.seriesTitle ?? result.subtitle,
         imageUrl: result.imageUrl,
         audioUrl: result.audioUrl,
         duration: result.duration,
         publishedAt: result.publishedAt,
       );
       final feedUrl = result.feedUrl ?? result.originalUrl;
-      final show = RssPodcastShow(
-        id: _showId(result),
-        title: result.showTitle ?? result.subtitle ?? '播客',
+      final series = RssPodcastSeries(
+        id: _seriesId(result),
+        title: result.seriesTitle ?? result.subtitle ?? '播客',
         originalUrl: feedUrl,
         author: result.subtitle,
         imageUrl: result.imageUrl,
         feedUrl: feedUrl,
         episodes: [episode],
       );
-      return EpisodePageArgs(episode: episode, relatedShows: [show]);
+      return EpisodePageArgs(episode: episode, relatedSeries: [series]);
     }
 
-    final show = await ref.read(podcastRepositoryProvider).loadRssShow(result);
-    if (show.episodes.isEmpty) {
+    final series = await ref
+        .read(podcastRepositoryProvider)
+        .loadRssSeries(result);
+    if (series.episodes.isEmpty) {
       throw StateError('这个播客暂时没有可播放音频');
     }
-    return EpisodePageArgs(episode: show.episodes.first, relatedShows: [show]);
+    return EpisodePageArgs(
+      episode: series.episodes.first,
+      relatedSeries: [series],
+    );
   }
 
-  String _showId(SearchResult result) {
+  String _seriesId(SearchResult result) {
     final feedUrl = result.feedUrl;
     if (feedUrl != null && feedUrl.isNotEmpty) return 'rss-$feedUrl';
-    return '${result.sourceType.name}-${result.showTitle ?? result.subtitle ?? result.id}';
+    return '${result.sourceType.name}-${result.seriesTitle ?? result.subtitle ?? result.id}';
   }
 
   @override
@@ -91,7 +97,7 @@ class _SearchResultPageState extends ConsumerState<SearchResultPage> {
         if (snapshot.hasData) {
           return EpisodePage(
             episode: snapshot.data!.episode,
-            relatedShows: snapshot.data!.relatedShows,
+            relatedSeries: snapshot.data!.relatedSeries,
           );
         }
         if (snapshot.hasError) {

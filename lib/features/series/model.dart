@@ -1,7 +1,7 @@
 import '../podcast/model.dart';
 
-sealed class AudioShow {
-  const AudioShow({
+sealed class Series {
+  const Series({
     required this.id,
     required this.title,
     required this.sourceType,
@@ -23,14 +23,14 @@ sealed class AudioShow {
 
   String get label;
   String get shortLabel;
-  String get _jsonKind;
+  String get _jsonType;
 
-  AudioShow copyWith({List<Episode>? episodes});
+  Series copyWith({List<Episode>? episodes});
 
   Map<String, Object?> toJson() => {
     'id': id,
     'title': title,
-    'kind': _jsonKind,
+    'type': _jsonType,
     'sourceType': sourceType.name,
     'originalUrl': originalUrl,
     'description': description,
@@ -42,7 +42,7 @@ sealed class AudioShow {
   Map<String, Object?> _commonJson() => {
     'id': id,
     'title': title,
-    'kind': _jsonKind,
+    'type': _jsonType,
     'sourceType': sourceType.name,
     'originalUrl': originalUrl,
     'description': description,
@@ -58,13 +58,12 @@ sealed class AudioShow {
         .toList();
   }
 
-  factory AudioShow.fromJson(Map<String, Object?> json) {
-    final sourceType = SourceType.values.byName(json['sourceType'] as String);
-    final kind = _kindFromJson(json, sourceType);
+  factory Series.fromJson(Map<String, Object?> json) {
+    final type = _typeFromJson(json);
     final episodes = _episodesFromJson(json);
 
-    return switch (kind) {
-      _AudioShowKind.bilibiliCreator => BilibiliCreatorShow(
+    return switch (type) {
+      _SeriesType.bilibiliCreator => BilibiliCreatorSeries(
         id: json['id'] as String,
         title: json['title'] as String,
         originalUrl: json['originalUrl'] as String,
@@ -73,17 +72,17 @@ sealed class AudioShow {
         imageUrl: json['imageUrl'] as String?,
         episodes: episodes,
       ),
-      _AudioShowKind.rssPodcast => RssPodcastShow(
+      _SeriesType.rssPodcast => RssPodcastSeries(
         id: json['id'] as String,
         title: json['title'] as String,
         originalUrl: json['originalUrl'] as String,
-        feedUrl: json['feedUrl'] as String? ?? json['originalUrl'] as String,
+        feedUrl: json['feedUrl'] as String,
         description: json['description'] as String?,
         author: json['author'] as String?,
         imageUrl: json['imageUrl'] as String?,
         episodes: episodes,
       ),
-      _AudioShowKind.bilibiliCollection => BilibiliCollectionShow(
+      _SeriesType.bilibiliCollection => BilibiliCollectionSeries(
         id: json['id'] as String,
         title: json['title'] as String,
         originalUrl: json['originalUrl'] as String,
@@ -95,28 +94,19 @@ sealed class AudioShow {
     };
   }
 
-  static _AudioShowKind _kindFromJson(
-    Map<String, Object?> json,
-    SourceType sourceType,
-  ) {
-    final stored = json['kind'] as String?;
-    if (stored == 'bilibiliCreator') return _AudioShowKind.bilibiliCreator;
-    if (stored == 'rssPodcast') return _AudioShowKind.rssPodcast;
+  static _SeriesType _typeFromJson(Map<String, Object?> json) {
+    final stored = json['type'] as String;
+    if (stored == 'bilibiliCreator') return _SeriesType.bilibiliCreator;
+    if (stored == 'rssPodcast') return _SeriesType.rssPodcast;
     if (stored == 'bilibiliCollection') {
-      return _AudioShowKind.bilibiliCollection;
+      return _SeriesType.bilibiliCollection;
     }
-
-    final id = json['id'] as String? ?? '';
-    if (id.startsWith('bili-up-')) return _AudioShowKind.bilibiliCreator;
-    if (sourceType == SourceType.bilibili) {
-      return _AudioShowKind.bilibiliCollection;
-    }
-    return _AudioShowKind.rssPodcast;
+    throw FormatException('Unknown series type: $stored');
   }
 }
 
-final class BilibiliCollectionShow extends AudioShow {
-  const BilibiliCollectionShow({
+final class BilibiliCollectionSeries extends Series {
+  const BilibiliCollectionSeries({
     required super.id,
     required super.title,
     required super.originalUrl,
@@ -133,11 +123,11 @@ final class BilibiliCollectionShow extends AudioShow {
   String get shortLabel => '合集';
 
   @override
-  String get _jsonKind => 'bilibiliCollection';
+  String get _jsonType => 'bilibiliCollection';
 
   @override
-  BilibiliCollectionShow copyWith({List<Episode>? episodes}) {
-    return BilibiliCollectionShow(
+  BilibiliCollectionSeries copyWith({List<Episode>? episodes}) {
+    return BilibiliCollectionSeries(
       id: id,
       title: title,
       originalUrl: originalUrl,
@@ -149,8 +139,8 @@ final class BilibiliCollectionShow extends AudioShow {
   }
 }
 
-final class BilibiliCreatorShow extends AudioShow {
-  const BilibiliCreatorShow({
+final class BilibiliCreatorSeries extends Series {
+  const BilibiliCreatorSeries({
     required super.id,
     required super.title,
     required super.originalUrl,
@@ -167,11 +157,11 @@ final class BilibiliCreatorShow extends AudioShow {
   String get shortLabel => 'UP主';
 
   @override
-  String get _jsonKind => 'bilibiliCreator';
+  String get _jsonType => 'bilibiliCreator';
 
   @override
-  BilibiliCreatorShow copyWith({List<Episode>? episodes}) {
-    return BilibiliCreatorShow(
+  BilibiliCreatorSeries copyWith({List<Episode>? episodes}) {
+    return BilibiliCreatorSeries(
       id: id,
       title: title,
       originalUrl: originalUrl,
@@ -183,8 +173,8 @@ final class BilibiliCreatorShow extends AudioShow {
   }
 }
 
-final class RssPodcastShow extends AudioShow {
-  const RssPodcastShow({
+final class RssPodcastSeries extends Series {
+  const RssPodcastSeries({
     required super.id,
     required super.title,
     required super.originalUrl,
@@ -204,11 +194,11 @@ final class RssPodcastShow extends AudioShow {
   String get shortLabel => '播客';
 
   @override
-  String get _jsonKind => 'rssPodcast';
+  String get _jsonType => 'rssPodcast';
 
   @override
-  RssPodcastShow copyWith({List<Episode>? episodes}) {
-    return RssPodcastShow(
+  RssPodcastSeries copyWith({List<Episode>? episodes}) {
+    return RssPodcastSeries(
       id: id,
       title: title,
       originalUrl: originalUrl,
@@ -224,4 +214,4 @@ final class RssPodcastShow extends AudioShow {
   Map<String, Object?> toJson() => {..._commonJson(), 'feedUrl': feedUrl};
 }
 
-enum _AudioShowKind { bilibiliCollection, bilibiliCreator, rssPodcast }
+enum _SeriesType { bilibiliCollection, bilibiliCreator, rssPodcast }

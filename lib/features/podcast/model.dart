@@ -15,7 +15,7 @@ enum SourceType {
 class Episode {
   const Episode({
     required this.id,
-    required this.showId,
+    required this.seriesId,
     required this.title,
     required this.sourceType,
     required this.originalUrl,
@@ -32,7 +32,7 @@ class Episode {
   });
 
   final String id;
-  final String showId;
+  final String seriesId;
   final String title;
   final SourceType sourceType;
   final String originalUrl;
@@ -49,7 +49,7 @@ class Episode {
 
   Map<String, Object?> toJson() => {
     'id': id,
-    'showId': showId,
+    'seriesId': seriesId,
     'title': title,
     'sourceType': sourceType.name,
     'originalUrl': originalUrl,
@@ -68,7 +68,7 @@ class Episode {
   factory Episode.fromJson(Map<String, Object?> json) {
     return Episode(
       id: json['id'] as String,
-      showId: json['showId'] as String,
+      seriesId: json['seriesId'] as String,
       title: json['title'] as String,
       sourceType: SourceType.values.byName(json['sourceType'] as String),
       originalUrl: json['originalUrl'] as String,

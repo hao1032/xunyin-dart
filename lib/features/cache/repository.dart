@@ -29,17 +29,10 @@ class AudioCacheRepository {
   Future<List<CachedEpisode>> cachedEpisodes() async {
     final episodes = await _store.loadCachedEpisodes();
     final existing = <CachedEpisode>[];
-    var changed = false;
     for (final cached in episodes) {
-      final migrated = await _migrateCachedFileIfNeeded(cached);
-      if (migrated != null) {
-        existing.add(migrated);
-        changed = changed || migrated.filePath != cached.filePath;
-      } else {
-        changed = true;
-      }
+      if (await File(cached.filePath).exists()) existing.add(cached);
     }
-    if (changed) {
+    if (existing.length != episodes.length) {
       for (final cached in existing) {
         await _store.saveCachedEpisode(cached);
       }
@@ -152,42 +145,6 @@ class AudioCacheRepository {
     final cached = await cachedEpisode(episode.id);
     if (cached == null) return null;
     return cached.filePath;
-  }
-
-  Future<CachedEpisode?> _migrateCachedFileIfNeeded(
-    CachedEpisode cached,
-  ) async {
-    final file = File(cached.filePath);
-    if (!await file.exists()) return null;
-    if (!_needsBilibiliExtensionMigration(cached)) return cached;
-
-    final target = File('${file.path.substring(0, file.path.length - 6)}.m4a');
-    if (!await target.exists()) {
-      await file.rename(target.path);
-    } else {
-      await file.delete();
-    }
-    final migrated = CachedEpisode(
-      episode: cached.episode,
-      filePath: target.path,
-      bytes: await target.length(),
-      cachedAt: cached.cachedAt,
-    );
-    AppLogger.result(
-      'migrate_cached_episode',
-      area: 'cache',
-      data: {
-        'episodeId': cached.episode.id,
-        'from': cached.filePath,
-        'to': migrated.filePath,
-      },
-    );
-    return migrated;
-  }
-
-  bool _needsBilibiliExtensionMigration(CachedEpisode cached) {
-    return cached.episode.sourceType == SourceType.bilibili &&
-        cached.filePath.toLowerCase().endsWith('.audio');
   }
 
   Future<String> _audioUrlFor(Episode episode) async {

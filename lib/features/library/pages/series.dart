@@ -4,19 +4,19 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
 import '../../audio/list_item.dart';
-import '../../channel/model.dart';
+import '../../series/model.dart';
 import '../../player/pages/mini.dart';
 import '../repository.dart';
 
-class ChannelsPage extends ConsumerStatefulWidget {
-  const ChannelsPage({super.key});
+class SeriesPage extends ConsumerStatefulWidget {
+  const SeriesPage({super.key});
 
   @override
-  ConsumerState<ChannelsPage> createState() => _ChannelsPageState();
+  ConsumerState<SeriesPage> createState() => _SeriesPageState();
 }
 
-class _ChannelsPageState extends ConsumerState<ChannelsPage> {
-  late Future<List<AudioShow>> _subscriptionsFuture;
+class _SeriesPageState extends ConsumerState<SeriesPage> {
+  late Future<List<Series>> _subscriptionsFuture;
 
   @override
   void initState() {
@@ -24,7 +24,7 @@ class _ChannelsPageState extends ConsumerState<ChannelsPage> {
     _subscriptionsFuture = _loadSubscriptions();
   }
 
-  Future<List<AudioShow>> _loadSubscriptions() async {
+  Future<List<Series>> _loadSubscriptions() async {
     final subscriptions = await ref
         .read(libraryRepositoryProvider)
         .subscriptions();
@@ -43,11 +43,11 @@ class _ChannelsPageState extends ConsumerState<ChannelsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('我的频道')),
+      appBar: AppBar(title: const Text('我的系列')),
       body: Column(
         children: [
           Expanded(
-            child: FutureBuilder<List<AudioShow>>(
+            child: FutureBuilder<List<Series>>(
               future: _subscriptionsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
@@ -55,23 +55,23 @@ class _ChannelsPageState extends ConsumerState<ChannelsPage> {
                 }
                 final subscriptions = snapshot.data ?? const [];
                 if (subscriptions.isEmpty) {
-                  return const _EmptyChannels();
+                  return const _EmptySeries();
                 }
                 return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                   itemCount: subscriptions.length,
                   itemBuilder: (context, index) {
-                    final show = subscriptions[index];
+                    final series = subscriptions[index];
                     return AudioListItem(
-                      coverUrl: show.imageUrl,
-                      placeholderIcon: _channelIcon(show),
-                      title: show.title,
-                      metadata: '${show.label} · ${show.episodes.length} 集',
+                      coverUrl: series.imageUrl,
+                      placeholderIcon: _seriesIcon(series),
+                      title: series.title,
+                      metadata: '${series.label} · ${series.episodes.length} 集',
                       actions: [
                         IconButton(
                           tooltip: '取消订阅',
                           icon: const Icon(Icons.remove_circle_outline_rounded),
-                          onPressed: () => _unsubscribe(show),
+                          onPressed: () => _unsubscribe(series),
                         ),
                         const Icon(Icons.chevron_right_rounded),
                       ],
@@ -80,12 +80,12 @@ class _ChannelsPageState extends ConsumerState<ChannelsPage> {
                           'open_subscription',
                           area: 'library',
                           data: {
-                            'showId': show.id,
-                            'title': show.title,
-                            'episodeCount': show.episodes.length,
+                            'seriesId': series.id,
+                            'title': series.title,
+                            'episodeCount': series.episodes.length,
                           },
                         );
-                        context.push('/channel', extra: show);
+                        context.push('/series', extra: series);
                       },
                     );
                   },
@@ -99,8 +99,8 @@ class _ChannelsPageState extends ConsumerState<ChannelsPage> {
     );
   }
 
-  Future<void> _unsubscribe(AudioShow show) async {
-    await ref.read(libraryRepositoryProvider).unsubscribe(show.id);
+  Future<void> _unsubscribe(Series series) async {
+    await ref.read(libraryRepositoryProvider).unsubscribe(series.id);
     if (!mounted) return;
     _reload();
     ScaffoldMessenger.of(
@@ -108,15 +108,15 @@ class _ChannelsPageState extends ConsumerState<ChannelsPage> {
     ).showSnackBar(const SnackBar(content: Text('已取消订阅')));
   }
 
-  IconData _channelIcon(AudioShow show) => switch (show) {
-    BilibiliCollectionShow() => Icons.video_library_rounded,
-    BilibiliCreatorShow() => Icons.person_rounded,
-    RssPodcastShow() => Icons.podcasts_rounded,
+  IconData _seriesIcon(Series series) => switch (series) {
+    BilibiliCollectionSeries() => Icons.video_library_rounded,
+    BilibiliCreatorSeries() => Icons.person_rounded,
+    RssPodcastSeries() => Icons.podcasts_rounded,
   };
 }
 
-class _EmptyChannels extends StatelessWidget {
-  const _EmptyChannels();
+class _EmptySeries extends StatelessWidget {
+  const _EmptySeries();
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +132,7 @@ class _EmptyChannels extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(height: 18),
-            Text('还没有频道', style: Theme.of(context).textTheme.titleLarge),
+            Text('还没有节目', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             const Text(
               '搜索 B站内容或播客，然后订阅合集、UP主或 RSS 播客。',

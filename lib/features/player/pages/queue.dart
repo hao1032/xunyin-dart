@@ -89,8 +89,8 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                       final selected =
                           queue.current != null &&
                           entry.containsEpisode(queue.current!.id);
-                      if (entry.type == PlaybackQueueEntryType.channel) {
-                        return _ShowQueueCard(
+                      if (entry.type == PlaybackQueueEntryType.series) {
+                        return _SeriesQueueCard(
                           entry: entry,
                           selected: selected,
                           currentEpisodeId: queue.current?.id,
@@ -229,13 +229,13 @@ class _EmptyQueue extends StatelessWidget {
     return const AppEmptyState(
       icon: Icons.queue_music_rounded,
       title: '播放列表还是空的',
-      message: '去发现页找一段想听的内容，单集和整个频道都可以加入这里。',
+      message: '去发现页找一段想听的内容，单集和整个系列都可以加入这里。',
     );
   }
 }
 
-class _ShowQueueCard extends StatelessWidget {
-  const _ShowQueueCard({
+class _SeriesQueueCard extends StatelessWidget {
+  const _SeriesQueueCard({
     required this.entry,
     required this.selected,
     required this.currentEpisodeId,
@@ -293,7 +293,7 @@ class _ShowQueueCard extends StatelessWidget {
             episodeIndex < entry.episodes.length;
             episodeIndex++
           )
-            _ShowEpisodeTile(
+            _SeriesEpisodeTile(
               episode: entry.episodes[episodeIndex],
               episodeIndex: episodeIndex,
               current: entry.episodes[episodeIndex].id == currentEpisodeId,
@@ -311,8 +311,8 @@ class _ShowQueueCard extends StatelessWidget {
   }
 }
 
-class _ShowEpisodeTile extends StatelessWidget {
-  const _ShowEpisodeTile({
+class _SeriesEpisodeTile extends StatelessWidget {
+  const _SeriesEpisodeTile({
     required this.episode,
     required this.episodeIndex,
     required this.current,

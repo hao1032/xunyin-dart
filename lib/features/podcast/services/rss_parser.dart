@@ -1,11 +1,11 @@
 import 'package:xml/xml.dart';
 
 import '../../../core/text/plain_text.dart';
-import '../../channel/model.dart';
+import '../../series/model.dart';
 import '../model.dart';
 
 class RssParser {
-  AudioShow parse(String xml, {required String feedUrl}) {
+  Series parse(String xml, {required String feedUrl}) {
     final document = XmlDocument.parse(xml);
     final channel = document.findAllElements('channel').firstOrNull;
     if (channel == null) {
@@ -16,7 +16,7 @@ class RssParser {
         _text(channel, 'image', child: 'url') ??
         _attribute(channel, 'image', 'href') ??
         _attribute(channel, 'itunes:image', 'href');
-    final show = RssPodcastShow(
+    final series = RssPodcastSeries(
       id: 'rss-$feedUrl',
       title: title,
       originalUrl: _text(channel, 'link') ?? feedUrl,
@@ -32,24 +32,24 @@ class RssParser {
           _text(item, 'guid') ?? _text(item, 'link') ?? _text(item, 'title');
       return Episode(
         id: 'rss-$guid',
-        showId: show.id,
+        seriesId: series.id,
         title: _text(item, 'title') ?? '未命名单集',
         sourceType: SourceType.rss,
         originalUrl: _text(item, 'link') ?? feedUrl,
         description: plainTextOrNull(
           _text(item, 'description') ?? _text(item, 'itunes:summary'),
         ),
-        author: show.author,
+        author: series.author,
         imageUrl:
             _attribute(item, 'itunes:image', 'href') ??
             _attribute(item, 'image', 'href') ??
-            show.imageUrl,
+            series.imageUrl,
         audioUrl: enclosure?.getAttribute('url'),
         duration: _duration(_text(item, 'itunes:duration')),
         publishedAt: DateTime.tryParse(_text(item, 'pubDate') ?? ''),
       );
     }).toList();
-    return show.copyWith(episodes: episodes);
+    return series.copyWith(episodes: episodes);
   }
 
   Duration? _duration(String? value) {

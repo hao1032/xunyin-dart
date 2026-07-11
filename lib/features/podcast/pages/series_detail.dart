@@ -8,8 +8,8 @@ import '../../../core/text/plain_text.dart';
 import '../../../core/widgets/app_layout.dart';
 import '../../audio/list_item.dart';
 import '../../cache/repository.dart';
-import '../../channel/model.dart';
-import '../../channel/service.dart';
+import '../../series/model.dart';
+import '../../series/service.dart';
 import '../../library/repository.dart';
 import '../../player/pages/mini.dart';
 import '../../player/services/playback_queue.dart';
@@ -17,32 +17,32 @@ import '../../player/services/controller.dart';
 import '../model.dart';
 import 'episode.dart';
 
-class ChannelDetailPage extends ConsumerStatefulWidget {
-  const ChannelDetailPage({super.key, required this.show});
+class SeriesDetailPage extends ConsumerStatefulWidget {
+  const SeriesDetailPage({super.key, required this.series});
 
-  final AudioShow show;
+  final Series series;
 
   @override
-  ConsumerState<ChannelDetailPage> createState() => _ChannelDetailPageState();
+  ConsumerState<SeriesDetailPage> createState() => _SeriesDetailPageState();
 }
 
-class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
+class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
   bool _subscribing = false;
   bool _checkingSubscription = true;
   bool _subscribed = false;
   bool _loadingEpisodes = false;
   Object? _episodesError;
-  late AudioShow _show;
+  late Series _series;
   final Set<String> _cachedEpisodeIds = {};
   final Set<String> _busyEpisodeIds = {};
 
   @override
   void initState() {
     super.initState();
-    _show = widget.show;
+    _series = widget.series;
     _loadSubscriptionState();
     _loadCacheState();
-    if (widget.show is! BilibiliCollectionShow) {
+    if (widget.series is! BilibiliCollectionSeries) {
       _loadEpisodes();
     }
   }
@@ -51,7 +51,7 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
     try {
       final subscribed = await ref
           .read(libraryRepositoryProvider)
-          .isSubscribed(widget.show.id);
+          .isSubscribed(widget.series.id);
       if (mounted) {
         setState(() {
           _checkingSubscription = false;
@@ -64,7 +64,7 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
         error,
         area: 'library',
         stackTrace: stackTrace,
-        data: {'showId': widget.show.id},
+        data: {'seriesId': widget.series.id},
       );
       if (mounted) {
         setState(() => _checkingSubscription = false);
@@ -86,11 +86,11 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'load_show_cache_state',
+        'load_series_cache_state',
         error,
         area: 'cache',
         stackTrace: stackTrace,
-        data: {'showId': widget.show.id},
+        data: {'seriesId': widget.series.id},
       );
     }
   }
@@ -101,26 +101,26 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
       _episodesError = null;
     });
     try {
-      final show = await ref.read(channelServiceProvider).load(widget.show);
+      final series = await ref.read(seriesServiceProvider).load(widget.series);
       if (mounted) {
         setState(() {
-          _show = show;
+          _series = series;
           _loadingEpisodes = false;
         });
       }
-      if (await ref.read(libraryRepositoryProvider).isSubscribed(show.id)) {
-        await ref.read(libraryRepositoryProvider).subscribe(show);
+      if (await ref.read(libraryRepositoryProvider).isSubscribed(series.id)) {
+        await ref.read(libraryRepositoryProvider).subscribe(series);
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'load_channel_episodes',
+        'load_series_episodes',
         error,
-        area: 'channel',
+        area: 'series',
         stackTrace: stackTrace,
         data: {
-          'showId': widget.show.id,
-          'title': widget.show.title,
-          'kind': widget.show.runtimeType.toString(),
+          'seriesId': widget.series.id,
+          'title': widget.series.title,
+          'type': widget.series.runtimeType.toString(),
         },
       );
       if (mounted) {
@@ -134,23 +134,23 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
 
   Future<void> _subscribe() async {
     if (_subscribing || _subscribed) return;
-    final show = _show;
+    final series = _series;
     setState(() => _subscribing = true);
     try {
       AppLogger.userAction(
-        'subscribe_show',
+        'subscribe_series',
         area: 'library',
         data: {
-          'showId': show.id,
-          'title': show.title,
-          'episodeCount': show.episodes.length,
+          'seriesId': series.id,
+          'title': series.title,
+          'episodeCount': series.episodes.length,
         },
       );
-      await ref.read(libraryRepositoryProvider).subscribe(show);
+      await ref.read(libraryRepositoryProvider).subscribe(series);
       AppLogger.result(
-        'subscribe_show',
+        'subscribe_series',
         area: 'library',
-        data: {'showId': show.id, 'title': show.title},
+        data: {'seriesId': series.id, 'title': series.title},
       );
       if (mounted) {
         setState(() => _subscribed = true);
@@ -165,23 +165,23 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
 
   Future<void> _playEpisode(Episode episode) async {
     AppLogger.userAction(
-      'play_episode_from_show',
+      'play_episode_from_series',
       area: 'player',
       data: {
         'episodeId': episode.id,
         'title': episode.title,
-        'showId': widget.show.id,
+        'seriesId': widget.series.id,
       },
     );
     try {
       await ref.read(playbackControllerProvider).play(episode);
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'play_episode_from_show',
+        'play_episode_from_series',
         error,
         area: 'player',
         stackTrace: stackTrace,
-        data: {'episodeId': episode.id, 'showId': widget.show.id},
+        data: {'episodeId': episode.id, 'seriesId': widget.series.id},
       );
       if (mounted) {
         ScaffoldMessenger.of(
@@ -205,7 +205,7 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'toggle_show_episode_cache',
+        'toggle_series_episode_cache',
         error,
         area: 'cache',
         stackTrace: stackTrace,
@@ -225,14 +225,14 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final show = _show;
-    final episodes = _loadingEpisodes ? const <Episode>[] : show.episodes;
+    final series = _series;
+    final episodes = _loadingEpisodes ? const <Episode>[] : series.episodes;
     final queue = ref.watch(playbackQueueProvider);
-    final isQueued = queue.items.any((item) => item.id == show.id);
-    final isCreatorShow = show is BilibiliCreatorShow;
-    final description = plainTextOrNull(show.description);
+    final isQueued = queue.items.any((item) => item.id == series.id);
+    final isCreatorSeries = series is BilibiliCreatorSeries;
+    final description = plainTextOrNull(series.description);
     return Scaffold(
-      appBar: AppBar(title: Text(show.label)),
+      appBar: AppBar(title: Text(series.label)),
       body: Column(
         children: [
           Expanded(
@@ -248,9 +248,9 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _ShowCover(
-                            url: show.imageUrl,
-                            circular: isCreatorShow,
+                          _SeriesCover(
+                            url: series.imageUrl,
+                            circular: isCreatorSeries,
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -258,11 +258,11 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  show.title,
+                                  series.title,
                                   style: Theme.of(context).textTheme.titleLarge,
                                 ),
                                 const SizedBox(height: 6),
-                                Text(show.author ?? show.sourceType.label),
+                                Text(series.author ?? series.sourceType.label),
                                 const SizedBox(height: 10),
                                 Text(
                                   _loadingEpisodes
@@ -288,17 +288,17 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                                 ? null
                                 : () {
                                     AppLogger.userAction(
-                                      'add_show_to_queue',
+                                      'add_series_to_queue',
                                       area: 'player',
                                       data: {
-                                        'showId': show.id,
-                                        'title': show.title,
+                                        'seriesId': series.id,
+                                        'title': series.title,
                                         'episodeCount': episodes.length,
                                       },
                                     );
                                     ref
                                         .read(playbackQueueProvider.notifier)
-                                        .addChannel(show);
+                                        .addSeries(series);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(content: Text('已加入播放列表')),
                                     );
@@ -352,7 +352,7 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                         Card(
                           child: ListTile(
                             leading: const Icon(Icons.error_outline),
-                            title: Text('${show.shortLabel}内容加载失败'),
+                            title: Text('${series.shortLabel}内容加载失败'),
                             subtitle: Text(_episodesError.toString()),
                             trailing: TextButton(
                               onPressed: _loadEpisodes,
@@ -379,14 +379,14 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                               data: {
                                 'episodeId': episode.id,
                                 'title': episode.title,
-                                'showId': show.id,
+                                'seriesId': series.id,
                               },
                             );
                             context.push(
                               '/episode',
                               extra: EpisodePageArgs(
                                 episode: episode,
-                                relatedShows: [show],
+                                relatedSeries: [series],
                               ),
                             );
                           },
@@ -407,7 +407,7 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                                         data: {
                                           'episodeId': episode.id,
                                           'title': episode.title,
-                                          'showId': show.id,
+                                          'seriesId': series.id,
                                         },
                                       );
                                       ref
@@ -489,8 +489,8 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
   }
 }
 
-class _ShowCover extends StatelessWidget {
-  const _ShowCover({this.url, this.circular = false});
+class _SeriesCover extends StatelessWidget {
+  const _SeriesCover({this.url, this.circular = false});
 
   final String? url;
   final bool circular;

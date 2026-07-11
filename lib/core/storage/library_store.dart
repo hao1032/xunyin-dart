@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/podcast/model.dart';
-import '../../features/channel/model.dart';
+import '../../features/series/model.dart';
 import '../../features/cache/model.dart';
 import 'app_json_store.dart';
 
@@ -21,27 +21,27 @@ class LibraryStore {
 
   final AppJsonStore _jsonStore;
 
-  Future<List<AudioShow>> loadSubscriptions() async {
+  Future<List<Series>> loadSubscriptions() async {
     final data = await _loadSubscriptions();
-    return _decodeList(data['subscriptions']).map(AudioShow.fromJson).toList();
+    return _decodeList(data['subscriptions']).map(Series.fromJson).toList();
   }
 
-  Future<void> saveSubscription(AudioShow show) async {
+  Future<void> saveSubscription(Series series) async {
     final data = await _loadSubscriptions();
-    final shows = _decodeList(
+    final seriesList = _decodeList(
       data['subscriptions'],
-    ).map(AudioShow.fromJson).toList();
-    final next = [show, ...shows.where((item) => item.id != show.id)];
+    ).map(Series.fromJson).toList();
+    final next = [series, ...seriesList.where((item) => item.id != series.id)];
     data['subscriptions'] = next.map((item) => item.toJson()).toList();
     await _saveSubscriptions(data);
   }
 
-  Future<void> removeSubscription(String showId) async {
+  Future<void> removeSubscription(String seriesId) async {
     final data = await _loadSubscriptions();
-    final shows = _decodeList(
+    final seriesList = _decodeList(
       data['subscriptions'],
-    ).map(AudioShow.fromJson).where((item) => item.id != showId).toList();
-    data['subscriptions'] = shows.map((item) => item.toJson()).toList();
+    ).map(Series.fromJson).where((item) => item.id != seriesId).toList();
+    data['subscriptions'] = seriesList.map((item) => item.toJson()).toList();
     await _saveSubscriptions(data);
   }
 

@@ -31,7 +31,7 @@ class SearchResult {
     this.audioUrl,
     this.duration,
     this.publishedAt,
-    this.showTitle,
+    this.seriesTitle,
     this.bvid,
     this.bilibiliKind = BilibiliResultKind.unknown,
   });
@@ -47,7 +47,7 @@ class SearchResult {
   final String? audioUrl;
   final Duration? duration;
   final DateTime? publishedAt;
-  final String? showTitle;
+  final String? seriesTitle;
   final String? bvid;
   final BilibiliResultKind bilibiliKind;
 }

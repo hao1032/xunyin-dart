@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xunyin_dart/features/bilibili/services/client.dart';
 import 'package:xunyin_dart/features/bilibili/services/repository.dart';
-import 'package:xunyin_dart/features/channel/model.dart';
+import 'package:xunyin_dart/features/series/model.dart';
 import 'package:xunyin_dart/features/podcast/model.dart';
 import 'package:xunyin_dart/features/search/model.dart';
 
@@ -33,7 +33,7 @@ void main() {
     final repository = BilibiliRepository(_FakeBilibiliClient());
 
     await expectLater(
-      repository.resolveAsShow(
+      repository.resolveAsSeries(
         const SearchResult(
           id: '',
           title: '细品红楼梦',
@@ -46,7 +46,7 @@ void main() {
     );
   });
 
-  test('converts multipart B站 videos into an AudioShow', () async {
+  test('converts multipart B站 videos into a Series', () async {
     final repository = BilibiliRepository(
       _FakeBilibiliClient(
         detail: {
@@ -63,13 +63,13 @@ void main() {
       ),
     );
 
-    final show = await repository.resolveAsShow(_result());
+    final series = await repository.resolveAsSeries(_result());
 
-    expect(show.title, 'Long Talk');
-    expect(show, isA<BilibiliCollectionShow>());
-    expect(show.episodes, hasLength(2));
-    expect(show.episodes.first.title, 'Part 1');
-    expect(show.episodes.first.cid, 101);
+    expect(series.title, 'Long Talk');
+    expect(series, isA<BilibiliCollectionSeries>());
+    expect(series.episodes, hasLength(2));
+    expect(series.episodes.first.title, 'Part 1');
+    expect(series.episodes.first.cid, 101);
   });
 
   test('converts single B站 videos into one Episode', () async {
@@ -87,14 +87,14 @@ void main() {
       ),
     );
 
-    final show = await repository.resolveAsShow(_result());
+    final series = await repository.resolveAsSeries(_result());
 
-    expect(show.episodes, hasLength(1));
-    expect(show.episodes.single.title, 'One Talk');
-    expect(show.episodes.single.sourceType, SourceType.bilibili);
+    expect(series.episodes, hasLength(1));
+    expect(series.episodes.single.title, 'One Talk');
+    expect(series.episodes.single.sourceType, SourceType.bilibili);
   });
 
-  test('converts B站 ugc season into an AudioShow', () async {
+  test('converts B站 ugc season into a Series', () async {
     final repository = BilibiliRepository(
       _FakeBilibiliClient(
         detail: {
@@ -117,12 +117,12 @@ void main() {
       ),
     );
 
-    final show = await repository.resolveAsShow(_result());
+    final series = await repository.resolveAsSeries(_result());
 
-    expect(show.id, 'bili-season-88');
-    expect(show, isA<BilibiliCollectionShow>());
-    expect(show.title, 'Season Talk');
-    expect(show.episodes.map((episode) => episode.bvid), ['BV101', 'BV102']);
+    expect(series.id, 'bili-season-88');
+    expect(series, isA<BilibiliCollectionSeries>());
+    expect(series.title, 'Season Talk');
+    expect(series.episodes.map((episode) => episode.bvid), ['BV101', 'BV102']);
   });
 
   test('loads B站 creator videos as playable episodes', () async {
@@ -153,21 +153,21 @@ void main() {
       ),
     );
 
-    final show = await repository.loadCreatorShow(
-      const BilibiliCreatorShow(
+    final series = await repository.loadCreatorSeries(
+      const BilibiliCreatorSeries(
         id: 'bili-up-42',
         title: 'Alice',
         originalUrl: 'https://space.bilibili.com/42',
       ),
     );
 
-    expect(show.episodes.map((episode) => episode.title), [
+    expect(series.episodes.map((episode) => episode.title), [
       'Video 1',
       'Video 2',
     ]);
-    expect(show, isA<BilibiliCreatorShow>());
-    expect(show.episodes.first.cid, 201);
-    expect(show.episodes.first.duration, const Duration(seconds: 60));
+    expect(series, isA<BilibiliCreatorSeries>());
+    expect(series.episodes.first.cid, 201);
+    expect(series.episodes.first.duration, const Duration(seconds: 60));
   });
 }
 

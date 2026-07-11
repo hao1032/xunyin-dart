@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/logging/app_logger.dart';
 import '../../../core/storage/app_json_store.dart';
 import '../../podcast/model.dart';
-import '../../channel/model.dart';
+import '../../series/model.dart';
 
 final playbackQueueProvider =
     NotifierProvider<PlaybackQueueController, PlaybackQueueState>(
@@ -91,18 +91,18 @@ class PlaybackQueueController extends Notifier<PlaybackQueueState> {
     );
   }
 
-  void addChannel(AudioShow channel) {
-    if (state.items.any((item) => item.id == channel.id)) return;
-    final items = [...state.items, PlaybackQueueEntry.channel(channel)];
+  void addSeries(Series series) {
+    if (state.items.any((item) => item.id == series.id)) return;
+    final items = [...state.items, PlaybackQueueEntry.series(series)];
     state = state.copyWith(items: items);
     _persist();
     AppLogger.result(
-      'queue_add_show',
+      'queue_add_series',
       area: 'player',
       data: {
-        'channelId': channel.id,
-        'title': channel.title,
-        'episodeCount': channel.episodes.length,
+        'seriesId': series.id,
+        'title': series.title,
+        'episodeCount': series.episodes.length,
         'queueCount': items.length,
       },
     );
@@ -184,7 +184,7 @@ class PlaybackQueueController extends Notifier<PlaybackQueueState> {
   }
 }
 
-enum PlaybackQueueEntryType { episode, channel }
+enum PlaybackQueueEntryType { episode, series }
 
 class PlaybackQueueEntry {
   const PlaybackQueueEntry._({
@@ -205,13 +205,13 @@ class PlaybackQueueEntry {
     );
   }
 
-  factory PlaybackQueueEntry.channel(AudioShow channel) {
+  factory PlaybackQueueEntry.series(Series series) {
     return PlaybackQueueEntry._(
-      id: channel.id,
-      title: channel.title,
-      subtitle: '${channel.episodes.length} 集 · ${channel.label}',
-      type: PlaybackQueueEntryType.channel,
-      episodes: channel.episodes,
+      id: series.id,
+      title: series.title,
+      subtitle: '${series.episodes.length} 集 · ${series.label}',
+      type: PlaybackQueueEntryType.series,
+      episodes: series.episodes,
     );
   }
 
@@ -236,10 +236,8 @@ class PlaybackQueueEntry {
   }
 
   static PlaybackQueueEntry? fromJson(Map<String, Object?> json) {
-    final storedType = json['type'] as String?;
-    final typeName = storedType == 'show' ? 'channel' : storedType;
     final type = PlaybackQueueEntryType.values
-        .where((item) => item.name == typeName)
+        .where((item) => item.name == json['type'])
         .firstOrNull;
     if (type == null) return null;
     final episodes = (json['episodes'] as List<dynamic>? ?? const [])
