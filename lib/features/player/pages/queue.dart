@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/formatters/audio_formatters.dart';
-import '../../../core/widgets/app_layout.dart';
-import '../../audio/list_item.dart';
-import '../../cache/repository.dart';
-import '../../podcast/model.dart';
+import '../../../core/app_logger.dart';
+import '../../../core/display_formatters.dart';
+import '../../../core/app_layout.dart';
+import '../../app_list_item.dart';
+import '../../downloads/repository.dart';
+import '../../episode/model.dart';
 import '../services/playback_queue.dart';
 import '../services/controller.dart';
 import 'mini.dart';
@@ -21,32 +21,32 @@ class QueuePage extends ConsumerStatefulWidget {
 }
 
 class _QueuePageState extends ConsumerState<QueuePage> {
-  final Set<String> _cachedEpisodeIds = {};
+  final Set<String> _downloadedEpisodeIds = {};
   final Set<String> _busyEpisodeIds = {};
 
   @override
   void initState() {
     super.initState();
-    _loadCachedEpisodes();
+    _loadDownloadedEpisodes();
   }
 
-  Future<void> _loadCachedEpisodes() async {
+  Future<void> _loadDownloadedEpisodes() async {
     try {
-      final cached = await ref
-          .read(audioCacheRepositoryProvider)
-          .cachedEpisodes();
+      final downloaded = await ref
+          .read(episodeDownloadRepositoryProvider)
+          .downloadedEpisodes();
       if (mounted) {
         setState(() {
-          _cachedEpisodeIds
+          _downloadedEpisodeIds
             ..clear()
-            ..addAll(cached.map((item) => item.episode.id));
+            ..addAll(downloaded.map((item) => item.episode.id));
         });
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'load_queue_cache_state',
+        'load_queue_download_state',
         error,
-        area: 'cache',
+        area: 'download',
         stackTrace: stackTrace,
       );
     }
@@ -94,7 +94,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                           entry: entry,
                           selected: selected,
                           currentEpisodeId: queue.current?.id,
-                          cachedEpisodeIds: _cachedEpisodeIds,
+                          downloadedEpisodeIds: _downloadedEpisodeIds,
                           busyEpisodeIds: _busyEpisodeIds,
                           onPlayEpisode: (episode, childIndex) => _playEpisode(
                             context,
@@ -102,25 +102,29 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                             index: index,
                             childIndex: childIndex,
                           ),
-                          onToggleCache: _toggleCache,
+                          onToggleDownload: _toggleDownload,
                         );
                       }
                       final episode = entry.episodes.first;
-                      return AudioListItem(
+                      return AppListItem(
                         coverUrl: episode.imageUrl,
                         title: entry.title,
                         metadata: _queueSubtitle(
                           episode,
-                          cached: _cachedEpisodeIds.contains(episode.id),
+                          downloaded: _downloadedEpisodeIds.contains(
+                            episode.id,
+                          ),
                           fallback: entry.subtitle,
                         ),
                         onTap: () =>
                             _playEpisode(context, episode, index: index),
                         actions: [
-                          _CacheIconButton(
-                            cached: _cachedEpisodeIds.contains(episode.id),
+                          _DownloadIconButton(
+                            downloaded: _downloadedEpisodeIds.contains(
+                              episode.id,
+                            ),
                             busy: _busyEpisodeIds.contains(episode.id),
-                            onPressed: () => _toggleCache(episode),
+                            onPressed: () => _toggleDownload(episode),
                           ),
                           IconButton(
                             tooltip: selected ? '正在播放' : '播放',
@@ -143,11 +147,11 @@ class _QueuePageState extends ConsumerState<QueuePage> {
 
   String _queueSubtitle(
     Episode episode, {
-    required bool cached,
+    required bool downloaded,
     String? fallback,
   }) {
     final parts = <String>[
-      if (cached) '已缓存',
+      if (downloaded) '已下载',
       if (episode.duration != null) formatDuration(episode.duration!),
       fallback ?? episode.author ?? episode.sourceType.label,
     ];
@@ -188,23 +192,23 @@ class _QueuePageState extends ConsumerState<QueuePage> {
     }
   }
 
-  Future<void> _toggleCache(Episode episode) async {
+  Future<void> _toggleDownload(Episode episode) async {
     if (_busyEpisodeIds.contains(episode.id)) return;
-    if (_cachedEpisodeIds.contains(episode.id)) return;
+    if (_downloadedEpisodeIds.contains(episode.id)) return;
     setState(() => _busyEpisodeIds.add(episode.id));
     try {
-      await ref.read(audioCacheRepositoryProvider).cache(episode);
+      await ref.read(episodeDownloadRepositoryProvider).download(episode);
       if (mounted) {
-        setState(() => _cachedEpisodeIds.add(episode.id));
+        setState(() => _downloadedEpisodeIds.add(episode.id));
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
+        ).showSnackBar(const SnackBar(content: Text('已下载到本地')));
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'toggle_queue_cache',
+        'toggle_queue_download',
         error,
-        area: 'cache',
+        area: 'download',
         stackTrace: stackTrace,
         data: {'episodeId': episode.id, 'title': episode.title},
       );
@@ -239,19 +243,19 @@ class _SeriesQueueCard extends StatelessWidget {
     required this.entry,
     required this.selected,
     required this.currentEpisodeId,
-    required this.cachedEpisodeIds,
+    required this.downloadedEpisodeIds,
     required this.busyEpisodeIds,
     required this.onPlayEpisode,
-    required this.onToggleCache,
+    required this.onToggleDownload,
   });
 
   final PlaybackQueueEntry entry;
   final bool selected;
   final String? currentEpisodeId;
-  final Set<String> cachedEpisodeIds;
+  final Set<String> downloadedEpisodeIds;
   final Set<String> busyEpisodeIds;
   final void Function(Episode episode, int childIndex) onPlayEpisode;
-  final ValueChanged<Episode> onToggleCache;
+  final ValueChanged<Episode> onToggleDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -297,13 +301,14 @@ class _SeriesQueueCard extends StatelessWidget {
               episode: entry.episodes[episodeIndex],
               episodeIndex: episodeIndex,
               current: entry.episodes[episodeIndex].id == currentEpisodeId,
-              cached: cachedEpisodeIds.contains(
+              downloaded: downloadedEpisodeIds.contains(
                 entry.episodes[episodeIndex].id,
               ),
               busy: busyEpisodeIds.contains(entry.episodes[episodeIndex].id),
               onPlay: () =>
                   onPlayEpisode(entry.episodes[episodeIndex], episodeIndex),
-              onToggleCache: () => onToggleCache(entry.episodes[episodeIndex]),
+              onToggleDownload: () =>
+                  onToggleDownload(entry.episodes[episodeIndex]),
             ),
         ],
       ),
@@ -316,39 +321,39 @@ class _SeriesEpisodeTile extends StatelessWidget {
     required this.episode,
     required this.episodeIndex,
     required this.current,
-    required this.cached,
+    required this.downloaded,
     required this.busy,
     required this.onPlay,
-    required this.onToggleCache,
+    required this.onToggleDownload,
   });
 
   final Episode episode;
   final int episodeIndex;
   final bool current;
-  final bool cached;
+  final bool downloaded;
   final bool busy;
   final VoidCallback onPlay;
-  final VoidCallback onToggleCache;
+  final VoidCallback onToggleDownload;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: AudioListItem(
+      child: AppListItem(
         coverUrl: episode.imageUrl,
         coverSize: 44,
         title: episode.title,
         metadata: [
-          if (cached) '已缓存',
+          if (downloaded) '已下载',
           if (episode.duration != null) formatDuration(episode.duration!),
           episode.author ?? episode.sourceType.label,
         ].join(' · '),
         onTap: onPlay,
         actions: [
-          _CacheIconButton(
-            cached: cached,
+          _DownloadIconButton(
+            downloaded: downloaded,
             busy: busy,
-            onPressed: onToggleCache,
+            onPressed: onToggleDownload,
           ),
           IconButton(
             tooltip: current ? '正在播放' : '播放',
@@ -361,14 +366,14 @@ class _SeriesEpisodeTile extends StatelessWidget {
   }
 }
 
-class _CacheIconButton extends StatelessWidget {
-  const _CacheIconButton({
-    required this.cached,
+class _DownloadIconButton extends StatelessWidget {
+  const _DownloadIconButton({
+    required this.downloaded,
     required this.busy,
     required this.onPressed,
   });
 
-  final bool cached;
+  final bool downloaded;
   final bool busy;
   final VoidCallback onPressed;
 
@@ -376,7 +381,7 @@ class _CacheIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (busy) {
       return IconButton(
-        tooltip: cached ? '已缓存' : '缓存中',
+        tooltip: downloaded ? '已下载' : '下载中',
         onPressed: null,
         icon: const SizedBox.square(
           dimension: 18,
@@ -385,9 +390,9 @@ class _CacheIconButton extends StatelessWidget {
       );
     }
     return IconButton(
-      tooltip: cached ? '已缓存' : '缓存到本地',
-      icon: Icon(cached ? Icons.offline_pin : Icons.download_outlined),
-      onPressed: cached ? null : onPressed,
+      tooltip: downloaded ? '已下载' : '下载到本地',
+      icon: Icon(downloaded ? Icons.offline_pin : Icons.download_outlined),
+      onPressed: downloaded ? null : onPressed,
     );
   }
 }

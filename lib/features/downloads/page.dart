@@ -2,58 +2,57 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/logging/app_logger.dart';
-import '../../core/formatters/audio_formatters.dart';
-import '../audio/list_item.dart';
+import '../../core/app_logger.dart';
+import '../../core/display_formatters.dart';
+import '../app_list_item.dart';
 import '../player/services/playback_queue.dart';
 import '../player/services/controller.dart';
 import '../player/pages/mini.dart';
 import 'repository.dart';
 import 'model.dart';
 
-class CacheManagementPage extends ConsumerStatefulWidget {
-  const CacheManagementPage({super.key});
+class DownloadsPage extends ConsumerStatefulWidget {
+  const DownloadsPage({super.key});
 
   @override
-  ConsumerState<CacheManagementPage> createState() =>
-      _CacheManagementPageState();
+  ConsumerState<DownloadsPage> createState() => _DownloadsPageState();
 }
 
-class _CacheManagementPageState extends ConsumerState<CacheManagementPage> {
-  late Future<List<CachedEpisode>> _cacheFuture;
+class _DownloadsPageState extends ConsumerState<DownloadsPage> {
+  late Future<List<DownloadedEpisode>> _downloadsFuture;
 
   @override
   void initState() {
     super.initState();
-    _cacheFuture = _loadCache();
+    _downloadsFuture = _loadDownloads();
   }
 
-  Future<List<CachedEpisode>> _loadCache() {
-    return ref.read(audioCacheRepositoryProvider).cachedEpisodes();
+  Future<List<DownloadedEpisode>> _loadDownloads() {
+    return ref.read(episodeDownloadRepositoryProvider).downloadedEpisodes();
   }
 
-  void _reloadCache() {
-    setState(() => _cacheFuture = _loadCache());
+  void _reloadDownloads() {
+    setState(() => _downloadsFuture = _loadDownloads());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('缓存管理')),
+      appBar: AppBar(title: const Text('下载管理')),
       body: Column(
         children: [
           Expanded(
-            child: FutureBuilder<List<CachedEpisode>>(
-              future: _cacheFuture,
+            child: FutureBuilder<List<DownloadedEpisode>>(
+              future: _downloadsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final cached = snapshot.data ?? const <CachedEpisode>[];
-                if (cached.isEmpty) {
-                  return const Center(child: Text('暂无缓存'));
+                final downloaded = snapshot.data ?? const <DownloadedEpisode>[];
+                if (downloaded.isEmpty) {
+                  return const Center(child: Text('暂无下载'));
                 }
-                final totalBytes = cached.fold<int>(
+                final totalBytes = downloaded.fold<int>(
                   0,
                   (sum, item) => sum + item.bytes,
                 );
@@ -63,12 +62,12 @@ class _CacheManagementPageState extends ConsumerState<CacheManagementPage> {
                     Padding(
                       padding: const EdgeInsets.only(left: 4, bottom: 8),
                       child: Text(
-                        '${cached.length} 个单集 · ${_formatBytes(totalBytes)}',
+                        '${downloaded.length} 个单集 · ${_formatBytes(totalBytes)}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
-                    ...cached.map(
-                      (item) => AudioListItem(
+                    ...downloaded.map(
+                      (item) => AppListItem(
                         coverUrl: item.episode.imageUrl,
                         title: item.episode.title,
                         metadata: [
@@ -95,19 +94,19 @@ class _CacheManagementPageState extends ConsumerState<CacheManagementPage> {
                             },
                           ),
                           IconButton(
-                            tooltip: '已缓存',
+                            tooltip: '已下载',
                             icon: const Icon(Icons.offline_pin),
                             onPressed: null,
                           ),
                           IconButton(
-                            tooltip: '播放缓存',
+                            tooltip: '播放下载',
                             icon: const Icon(Icons.play_arrow),
-                            onPressed: () => _playCached(item),
+                            onPressed: () => _playDownloaded(item),
                           ),
                           IconButton(
-                            tooltip: '删除缓存',
+                            tooltip: '删除下载',
                             icon: const Icon(Icons.delete_outline),
-                            onPressed: () => _removeCached(item),
+                            onPressed: () => _removeDownloaded(item),
                           ),
                         ],
                       ),
@@ -123,16 +122,16 @@ class _CacheManagementPageState extends ConsumerState<CacheManagementPage> {
     );
   }
 
-  Future<void> _playCached(CachedEpisode cached) async {
+  Future<void> _playDownloaded(DownloadedEpisode downloaded) async {
     try {
-      await ref.read(playbackControllerProvider).play(cached.episode);
+      await ref.read(playbackControllerProvider).play(downloaded.episode);
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'play_cached_from_cache_management',
+        'play_downloaded_from_download_management',
         error,
-        area: 'cache',
+        area: 'download',
         stackTrace: stackTrace,
-        data: {'episodeId': cached.episode.id},
+        data: {'episodeId': downloaded.episode.id},
       );
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -141,13 +140,15 @@ class _CacheManagementPageState extends ConsumerState<CacheManagementPage> {
     }
   }
 
-  Future<void> _removeCached(CachedEpisode cached) async {
-    await ref.read(audioCacheRepositoryProvider).remove(cached.episode.id);
+  Future<void> _removeDownloaded(DownloadedEpisode downloaded) async {
+    await ref
+        .read(episodeDownloadRepositoryProvider)
+        .remove(downloaded.episode.id);
     if (!mounted) return;
-    _reloadCache();
+    _reloadDownloads();
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('已删除缓存')));
+    ).showSnackBar(const SnackBar(content: Text('已删除下载')));
   }
 
   String _formatBytes(int bytes) {

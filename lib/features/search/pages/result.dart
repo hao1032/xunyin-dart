@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/logging/app_logger.dart';
+import '../../../core/app_logger.dart';
 import '../../series/model.dart';
 import '../../bilibili/services/repository.dart';
 import '../../podcast/services/repository.dart';
-import '../../podcast/model.dart';
-import '../../podcast/pages/episode.dart';
+import '../../episode/model.dart';
+import '../../episode/page.dart';
 import '../model.dart';
 
 class SearchResultPage extends ConsumerStatefulWidget {
@@ -44,7 +44,7 @@ class _SearchResultPageState extends ConsumerState<SearchResultPage> {
       );
     }
 
-    if (result.audioUrl != null && result.audioUrl!.isNotEmpty) {
+    if (result.mediaUrl != null && result.mediaUrl!.isNotEmpty) {
       final episode = Episode(
         id: result.id,
         seriesId: _seriesId(result),
@@ -54,7 +54,7 @@ class _SearchResultPageState extends ConsumerState<SearchResultPage> {
         description: result.description,
         author: result.seriesTitle ?? result.subtitle,
         imageUrl: result.imageUrl,
-        audioUrl: result.audioUrl,
+        mediaUrl: result.mediaUrl,
         duration: result.duration,
         publishedAt: result.publishedAt,
       );

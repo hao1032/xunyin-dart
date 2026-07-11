@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/widgets/app_layout.dart';
+import '../../../core/app_logger.dart';
+import '../../../core/app_layout.dart';
 import '../../player/pages/mini.dart';
 
 class LibraryPage extends StatelessWidget {
@@ -100,13 +100,13 @@ class LibraryPage extends StatelessWidget {
                       _LibraryActionCard(
                         icon: Icons.download_done_rounded,
                         title: '离线内容',
-                        subtitle: '管理已缓存的单集',
+                        subtitle: '管理已下载的单集',
                         onTap: () {
                           AppLogger.userAction(
-                            'open_cache_management',
-                            area: 'cache',
+                            'open_download_management',
+                            area: 'download',
                           );
-                          context.push('/cache');
+                          context.push('/downloads');
                         },
                       ),
                     ],

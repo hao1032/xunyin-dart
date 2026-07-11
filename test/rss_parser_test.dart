@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xunyin_dart/features/series/model.dart';
 import 'package:xunyin_dart/features/podcast/services/rss_parser.dart';
-import 'package:xunyin_dart/features/podcast/model.dart';
+import 'package:xunyin_dart/features/episode/model.dart';
 
 void main() {
   test('parses an RSS feed into a Series with episodes', () {
@@ -27,7 +27,7 @@ void main() {
     expect(series.sourceType, SourceType.rss);
     expect(series, isA<RssPodcastSeries>());
     expect(series.episodes, hasLength(1));
-    expect(series.episodes.single.audioUrl, 'https://example.com/ep-1.mp3');
+    expect(series.episodes.single.mediaUrl, 'https://example.com/ep-1.mp3');
     expect(
       series.episodes.single.duration,
       const Duration(hours: 1, minutes: 2, seconds: 3),

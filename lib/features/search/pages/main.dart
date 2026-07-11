@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/formatters/audio_formatters.dart';
-import '../../../core/widgets/app_layout.dart';
-import '../../audio/list_item.dart';
+import '../../../core/app_logger.dart';
+import '../../../core/display_formatters.dart';
+import '../../../core/app_layout.dart';
+import '../../app_list_item.dart';
 import '../../player/pages/mini.dart';
-import '../../podcast/model.dart';
+import '../../episode/model.dart';
 import '../repository.dart';
 import '../model.dart';
 
@@ -332,7 +332,7 @@ class _SearchResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AudioListItem(
+    return AppListItem(
       coverUrl: result.imageUrl,
       title: result.title,
       metadata: [

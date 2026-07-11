@@ -4,9 +4,9 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/errors/app_error.dart';
-import '../../../core/logging/app_logger.dart';
-import '../../../core/network/http_client.dart';
+import '../../../core/app_error.dart';
+import '../../../core/app_logger.dart';
+import '../../../core/http_client.dart';
 
 final bilibiliClientProvider = Provider<BilibiliClient>((ref) {
   return BilibiliClient(ref.watch(dioProvider));
@@ -470,9 +470,9 @@ class BilibiliClient {
         .substring(0, 32);
   }
 
-  Future<String> audioUrl({required String bvid, required int cid}) async {
+  Future<String> mediaUrl({required String bvid, required int cid}) async {
     AppLogger.result(
-      'request_audio_url',
+      'request_media_url',
       area: 'bilibili',
       message: 'request',
       data: {'bvid': bvid, 'cid': cid},
@@ -502,17 +502,17 @@ class BilibiliClient {
     if (url is! String || url.isEmpty) {
       throw const BilibiliUnavailableException(
         '该 B站音频地址不可用',
-        code: 'bad_audio_url',
+        code: 'bad_media_url',
       );
     }
     final normalizedUrl = _normalizeMediaUrl(url);
     AppLogger.result(
-      'request_audio_url',
+      'request_media_url',
       area: 'bilibili',
       data: {
         'bvid': bvid,
         'cid': cid,
-        'audioCount': sorted.length,
+        'mediaCount': sorted.length,
         'selectedId': selected['id'],
         'selectedCodecs': selected['codecs'],
         'selectedBandwidth': selected['bandwidth'],

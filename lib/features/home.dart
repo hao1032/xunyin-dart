@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../player/pages/mini.dart';
-import '../player/pages/queue.dart';
-import '../library/pages/main.dart';
-import '../search/pages/main.dart';
+import 'player/pages/mini.dart';
+import 'player/pages/queue.dart';
+import 'library/pages/main.dart';
+import 'search/pages/main.dart';
 
 class MainShellPage extends ConsumerStatefulWidget {
   const MainShellPage({super.key});

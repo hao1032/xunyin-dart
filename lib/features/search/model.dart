@@ -1,4 +1,4 @@
-import '../podcast/model.dart';
+import '../episode/model.dart';
 
 enum BilibiliResultKind {
   collection,
@@ -28,7 +28,7 @@ class SearchResult {
     this.description,
     this.imageUrl,
     this.feedUrl,
-    this.audioUrl,
+    this.mediaUrl,
     this.duration,
     this.publishedAt,
     this.seriesTitle,
@@ -44,7 +44,7 @@ class SearchResult {
   final String? description;
   final String? imageUrl;
   final String? feedUrl;
-  final String? audioUrl;
+  final String? mediaUrl;
   final Duration? duration;
   final DateTime? publishedAt;
   final String? seriesTitle;

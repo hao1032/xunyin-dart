@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'routing/app_router.dart';
-import 'theme/app_theme.dart';
+import 'app_router.dart';
+import 'app_theme.dart';
 
 class XunyinApp extends StatelessWidget {
   const XunyinApp({super.key});

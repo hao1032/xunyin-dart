@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:xunyin_dart/features/bilibili/services/client.dart';
 import 'package:xunyin_dart/features/bilibili/services/repository.dart';
 import 'package:xunyin_dart/features/series/model.dart';
-import 'package:xunyin_dart/features/podcast/model.dart';
+import 'package:xunyin_dart/features/episode/model.dart';
 import 'package:xunyin_dart/features/search/model.dart';
 
 void main() {

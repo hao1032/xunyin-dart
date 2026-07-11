@@ -1,4 +1,4 @@
-import '../podcast/model.dart';
+import '../episode/model.dart';
 
 sealed class Series {
   const Series({

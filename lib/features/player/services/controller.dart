@@ -4,15 +4,14 @@ import 'package:audio_session/audio_session.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../bilibili/services/repository.dart';
-import '../../cache/repository.dart';
+import '../../../core/app_logger.dart';
+import '../../downloads/repository.dart';
+import '../../episode/playback_info.dart';
 import '../../library/repository.dart';
-import '../../podcast/model.dart';
-import 'audio_source.dart';
+import '../../episode/model.dart';
 import 'playback_queue.dart';
 
-final appAudioPlayerProvider = Provider<AudioPlayer>((ref) {
+final appPlayerProvider = Provider<AudioPlayer>((ref) {
   final player = AudioPlayer(useProxyForRequestHeaders: false);
   ref.onDispose(player.dispose);
   return player;
@@ -20,9 +19,9 @@ final appAudioPlayerProvider = Provider<AudioPlayer>((ref) {
 
 final playbackControllerProvider = Provider<PlaybackController>((ref) {
   final controller = PlaybackController(
-    ref.watch(appAudioPlayerProvider),
-    ref.watch(bilibiliRepositoryProvider),
-    ref.watch(audioCacheRepositoryProvider),
+    ref.watch(appPlayerProvider),
+    ref.watch(episodePlaybackInfoProvider),
+    ref.watch(episodeDownloadRepositoryProvider),
     ref.watch(libraryRepositoryProvider),
     ref.watch(playbackQueueProvider.notifier),
   );
@@ -33,8 +32,8 @@ final playbackControllerProvider = Provider<PlaybackController>((ref) {
 class PlaybackController {
   PlaybackController(
     this._player,
-    this._bilibiliRepository,
-    this._cacheRepository,
+    this._playbackInfo,
+    this._downloadRepository,
     this._library,
     this._queue,
   ) {
@@ -48,8 +47,8 @@ class PlaybackController {
   static const _completedThreshold = Duration(seconds: 10);
 
   final AudioPlayer _player;
-  final BilibiliRepository _bilibiliRepository;
-  final AudioCacheRepository _cacheRepository;
+  final EpisodePlaybackInfoProvider _playbackInfo;
+  final EpisodeDownloadRepository _downloadRepository;
   final LibraryRepository _library;
   final PlaybackQueueController? _queue;
   StreamSubscription<PlayerState>? _playerStateSubscription;
@@ -83,9 +82,9 @@ class PlaybackController {
     _queue?.playNow(episode);
     final session = await AudioSession.instance;
     await session.configure(const AudioSessionConfiguration.speech());
-    final cachedPath = await _cacheRepository.localPathFor(episode);
-    if (cachedPath != null) {
-      await _player.setFilePath(cachedPath);
+    final downloadedPath = await _downloadRepository.localPathFor(episode);
+    if (downloadedPath != null) {
+      await _player.setFilePath(downloadedPath);
       _currentEpisode = episode;
       _lastSavedPosition = null;
       await _seekToSavedPosition(episode);
@@ -94,7 +93,7 @@ class PlaybackController {
       unawaited(
         _player.play().catchError((Object error, StackTrace stackTrace) {
           AppLogger.failure(
-            'play_cached_episode',
+            'play_downloaded_episode',
             error,
             area: 'player',
             stackTrace: stackTrace,
@@ -103,32 +102,23 @@ class PlaybackController {
         }),
       );
       AppLogger.result(
-        'play_cached_episode',
+        'play_downloaded_episode',
         area: 'player',
-        data: {'episodeId': episode.id, 'path': cachedPath},
+        data: {'episodeId': episode.id, 'path': downloadedPath},
       );
       return;
     }
-    final audioUrl = await _audioUrlFor(episode);
+    final info = await _playbackInfo.playbackInfo(episode);
     AppLogger.result(
-      'prepare_audio',
+      'prepare_episode_source',
       area: 'player',
-      data: {
-        'episodeId': episode.id,
-        'source': episode.sourceType.name,
-        'hasAudioUrl': audioUrl.isNotEmpty,
-      },
+      data: {'episodeId': episode.id, 'source': episode.sourceType.name},
     );
-    if (episode.sourceType == SourceType.bilibili) {
-      await _player.setAudioSource(
-        BilibiliAudioSource(
-          uri: Uri.parse(audioUrl),
-          headers: _bilibiliPlaybackHeaders(episode),
-          episodeId: episode.id,
-        ),
-      );
-    } else {
-      await _player.setUrl(audioUrl);
+    switch (info) {
+      case EpisodeUrlPlaybackInfo(:final url):
+        await _player.setUrl(url);
+      case EpisodeCustomPlaybackInfo(:final source):
+        await _player.setAudioSource(source);
     }
     _currentEpisode = episode;
     _lastSavedPosition = null;
@@ -220,29 +210,5 @@ class PlaybackController {
         'reason': reason,
       },
     );
-  }
-
-  Future<String> _audioUrlFor(Episode episode) async {
-    if (episode.sourceType == SourceType.bilibili) {
-      return _bilibiliRepository.resolveAudioUrl(episode);
-    }
-    final audioUrl = episode.audioUrl;
-    if (audioUrl == null || audioUrl.isEmpty) {
-      throw StateError('该单集没有音频地址');
-    }
-    return audioUrl;
-  }
-
-  Map<String, String> _bilibiliPlaybackHeaders(Episode episode) {
-    return {
-      'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36',
-      'Referer': episode.bvid == null
-          ? 'https://www.bilibili.com/'
-          : 'https://www.bilibili.com/video/${episode.bvid}',
-      'Origin': 'https://www.bilibili.com',
-      'Accept': '*/*',
-    };
   }
 }

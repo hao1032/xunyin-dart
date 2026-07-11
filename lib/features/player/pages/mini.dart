@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/formatters/audio_formatters.dart';
+import '../../../core/app_logger.dart';
+import '../../../core/display_formatters.dart';
 import '../services/playback_queue.dart';
 import '../services/controller.dart';
 
@@ -15,7 +15,7 @@ class MiniPlayer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final player = ref.watch(appAudioPlayerProvider);
+    final player = ref.watch(appPlayerProvider);
     final current = ref.watch(playbackQueueProvider).current;
     if (current == null) return const SizedBox.shrink();
 

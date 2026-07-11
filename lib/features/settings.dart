@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/logging/app_logger.dart';
+import '../core/app_logger.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -43,12 +43,15 @@ class SettingsPage extends ConsumerWidget {
           Card(
             child: ListTile(
               leading: const Icon(Icons.offline_pin_outlined),
-              title: const Text('缓存管理'),
-              subtitle: const Text('查看和删除本地缓存'),
+              title: const Text('下载管理'),
+              subtitle: const Text('查看和删除已下载单集'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
-                AppLogger.userAction('open_cache_management', area: 'cache');
-                context.push('/cache');
+                AppLogger.userAction(
+                  'open_download_management',
+                  area: 'download',
+                );
+                context.push('/downloads');
               },
             ),
           ),

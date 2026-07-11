@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/podcast/model.dart';
+import '../../features/episode/model.dart';
 import '../../features/series/model.dart';
-import '../../features/cache/model.dart';
+import '../../features/downloads/model.dart';
 import 'app_json_store.dart';
 
 final libraryStoreProvider = Provider<LibraryStore>((ref) {
@@ -16,7 +16,7 @@ class LibraryStore {
 
   static const _subscriptionsFileName = 'subscriptions.json';
   static const _historyFileName = 'history.json';
-  static const _cacheFileName = 'cached_episodes.json';
+  static const _downloadFileName = 'downloaded_episodes.json';
   static const _playbackPositionsFileName = 'playback_positions.json';
 
   final AppJsonStore _jsonStore;
@@ -61,32 +61,34 @@ class LibraryStore {
     await _saveHistory(data);
   }
 
-  Future<List<CachedEpisode>> loadCachedEpisodes() async {
-    final data = await _loadCache();
-    return _decodeList(data['episodes']).map(CachedEpisode.fromJson).toList();
+  Future<List<DownloadedEpisode>> loadDownloadedEpisodes() async {
+    final data = await _loadDownloads();
+    return _decodeList(
+      data['episodes'],
+    ).map(DownloadedEpisode.fromJson).toList();
   }
 
-  Future<void> saveCachedEpisode(CachedEpisode cached) async {
-    final data = await _loadCache();
+  Future<void> saveDownloadedEpisode(DownloadedEpisode downloaded) async {
+    final data = await _loadDownloads();
     final episodes = _decodeList(
       data['episodes'],
-    ).map(CachedEpisode.fromJson).toList();
+    ).map(DownloadedEpisode.fromJson).toList();
     final next = [
-      cached,
-      ...episodes.where((item) => item.episode.id != cached.episode.id),
+      downloaded,
+      ...episodes.where((item) => item.episode.id != downloaded.episode.id),
     ];
     data['episodes'] = next.map((item) => item.toJson()).toList();
-    await _saveCache(data);
+    await _saveDownload(data);
   }
 
-  Future<void> removeCachedEpisode(String episodeId) async {
-    final data = await _loadCache();
+  Future<void> removeDownloadedEpisode(String episodeId) async {
+    final data = await _loadDownloads();
     final episodes = _decodeList(data['episodes'])
-        .map(CachedEpisode.fromJson)
+        .map(DownloadedEpisode.fromJson)
         .where((item) => item.episode.id != episodeId)
         .toList();
     data['episodes'] = episodes.map((item) => item.toJson()).toList();
-    await _saveCache(data);
+    await _saveDownload(data);
   }
 
   Future<Duration?> loadPlaybackPosition(String episodeId) async {
@@ -129,9 +131,9 @@ class LibraryStore {
     );
   }
 
-  Future<Map<String, Object?>> _loadCache() {
+  Future<Map<String, Object?>> _loadDownloads() {
     return _jsonStore.readObject(
-      _cacheFileName,
+      _downloadFileName,
       fallback: {'version': 1, 'episodes': <Object?>[]},
     );
   }
@@ -155,10 +157,10 @@ class LibraryStore {
     return _jsonStore.writeObject(_historyFileName, data);
   }
 
-  Future<void> _saveCache(Map<String, Object?> data) {
+  Future<void> _saveDownload(Map<String, Object?> data) {
     data['version'] = 1;
     data.putIfAbsent('episodes', () => <Object?>[]);
-    return _jsonStore.writeObject(_cacheFileName, data);
+    return _jsonStore.writeObject(_downloadFileName, data);
   }
 
   Future<void> _savePlaybackPositions(Map<String, Object?> data) {

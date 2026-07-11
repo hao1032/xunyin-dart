@@ -1,8 +1,8 @@
 import 'package:xml/xml.dart';
 
-import '../../../core/text/plain_text.dart';
+import '../../../core/plain_text.dart';
+import '../../episode/model.dart';
 import '../../series/model.dart';
-import '../model.dart';
 
 class RssParser {
   Series parse(String xml, {required String feedUrl}) {
@@ -44,7 +44,7 @@ class RssParser {
             _attribute(item, 'itunes:image', 'href') ??
             _attribute(item, 'image', 'href') ??
             series.imageUrl,
-        audioUrl: enclosure?.getAttribute('url'),
+        mediaUrl: enclosure?.getAttribute('url'),
         duration: _duration(_text(item, 'itunes:duration')),
         publishedAt: DateTime.tryParse(_text(item, 'pubDate') ?? ''),
       );

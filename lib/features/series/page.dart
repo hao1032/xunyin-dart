@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/formatters/audio_formatters.dart';
-import '../../../core/text/plain_text.dart';
-import '../../../core/widgets/app_layout.dart';
-import '../../audio/list_item.dart';
-import '../../cache/repository.dart';
-import '../../series/model.dart';
-import '../../series/service.dart';
-import '../../library/repository.dart';
-import '../../player/pages/mini.dart';
-import '../../player/services/playback_queue.dart';
-import '../../player/services/controller.dart';
-import '../model.dart';
-import 'episode.dart';
+import '../../core/app_logger.dart';
+import '../../core/display_formatters.dart';
+import '../../core/plain_text.dart';
+import '../../core/app_layout.dart';
+import '../app_list_item.dart';
+import '../downloads/repository.dart';
+import '../library/repository.dart';
+import '../player/pages/mini.dart';
+import '../player/services/playback_queue.dart';
+import '../player/services/controller.dart';
+import '../episode/model.dart';
+import '../episode/page.dart';
+import 'model.dart';
+import 'service.dart';
 
 class SeriesDetailPage extends ConsumerStatefulWidget {
   const SeriesDetailPage({super.key, required this.series});
@@ -33,7 +33,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
   bool _loadingEpisodes = false;
   Object? _episodesError;
   late Series _series;
-  final Set<String> _cachedEpisodeIds = {};
+  final Set<String> _downloadedEpisodeIds = {};
   final Set<String> _busyEpisodeIds = {};
 
   @override
@@ -41,7 +41,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
     super.initState();
     _series = widget.series;
     _loadSubscriptionState();
-    _loadCacheState();
+    _loadDownloadsState();
     if (widget.series is! BilibiliCollectionSeries) {
       _loadEpisodes();
     }
@@ -72,23 +72,23 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
     }
   }
 
-  Future<void> _loadCacheState() async {
+  Future<void> _loadDownloadsState() async {
     try {
-      final cached = await ref
-          .read(audioCacheRepositoryProvider)
-          .cachedEpisodes();
+      final downloaded = await ref
+          .read(episodeDownloadRepositoryProvider)
+          .downloadedEpisodes();
       if (mounted) {
         setState(() {
-          _cachedEpisodeIds
+          _downloadedEpisodeIds
             ..clear()
-            ..addAll(cached.map((item) => item.episode.id));
+            ..addAll(downloaded.map((item) => item.episode.id));
         });
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'load_series_cache_state',
+        'load_series_download_state',
         error,
-        area: 'cache',
+        area: 'download',
         stackTrace: stackTrace,
         data: {'seriesId': widget.series.id},
       );
@@ -191,23 +191,23 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
     }
   }
 
-  Future<void> _toggleCache(Episode episode) async {
+  Future<void> _toggleDownload(Episode episode) async {
     if (_busyEpisodeIds.contains(episode.id)) return;
-    if (_cachedEpisodeIds.contains(episode.id)) return;
+    if (_downloadedEpisodeIds.contains(episode.id)) return;
     setState(() => _busyEpisodeIds.add(episode.id));
     try {
-      await ref.read(audioCacheRepositoryProvider).cache(episode);
+      await ref.read(episodeDownloadRepositoryProvider).download(episode);
       if (mounted) {
-        setState(() => _cachedEpisodeIds.add(episode.id));
+        setState(() => _downloadedEpisodeIds.add(episode.id));
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
+        ).showSnackBar(const SnackBar(content: Text('已下载到本地')));
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'toggle_series_episode_cache',
+        'toggle_series_episode_download',
         error,
-        area: 'cache',
+        area: 'download',
         stackTrace: stackTrace,
         data: {'episodeId': episode.id, 'title': episode.title},
       );
@@ -364,9 +364,11 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                         final episodeQueued = queue.items.any(
                           (item) => item.containsEpisode(episode.id),
                         );
-                        final cached = _cachedEpisodeIds.contains(episode.id);
+                        final downloaded = _downloadedEpisodeIds.contains(
+                          episode.id,
+                        );
                         final busy = _busyEpisodeIds.contains(episode.id);
-                        return AudioListItem(
+                        return AppListItem(
                           coverUrl: episode.imageUrl,
                           coverSize: 64,
                           placeholderIcon: Icons.music_note,
@@ -423,7 +425,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                                     },
                             ),
                             IconButton(
-                              tooltip: cached ? '已缓存' : '缓存到本地',
+                              tooltip: downloaded ? '已下载' : '下载到本地',
                               icon: busy
                                   ? const SizedBox.square(
                                       dimension: 18,
@@ -432,23 +434,23 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                                       ),
                                     )
                                   : Icon(
-                                      cached
+                                      downloaded
                                           ? Icons.offline_pin
                                           : Icons.download_outlined,
                                     ),
-                              onPressed: busy || cached
+                              onPressed: busy || downloaded
                                   ? null
                                   : () {
                                       AppLogger.userAction(
-                                        'toggle_episode_cache',
-                                        area: 'cache',
+                                        'toggle_episode_download',
+                                        area: 'download',
                                         data: {
                                           'episodeId': episode.id,
                                           'title': episode.title,
-                                          'cached': cached,
+                                          'downloaded': downloaded,
                                         },
                                       );
-                                      _toggleCache(episode);
+                                      _toggleDownload(episode);
                                     },
                             ),
                             IconButton(

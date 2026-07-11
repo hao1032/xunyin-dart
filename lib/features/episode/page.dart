@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/formatters/audio_formatters.dart';
-import '../../../core/text/plain_text.dart';
-import '../../../core/widgets/app_layout.dart';
-import '../../cache/repository.dart';
-import '../../cache/model.dart';
-import '../../player/services/playback_queue.dart';
-import '../../player/services/controller.dart';
-import '../../player/pages/mini.dart';
-import '../model.dart';
-import '../../series/model.dart';
+import '../../core/app_logger.dart';
+import '../../core/display_formatters.dart';
+import '../../core/plain_text.dart';
+import '../../core/app_layout.dart';
+import '../downloads/repository.dart';
+import '../downloads/model.dart';
+import '../player/services/playback_queue.dart';
+import '../player/services/controller.dart';
+import '../player/pages/mini.dart';
+import '../series/model.dart';
+import 'model.dart';
 
 class EpisodePage extends ConsumerStatefulWidget {
   const EpisodePage({
@@ -30,37 +30,37 @@ class EpisodePage extends ConsumerStatefulWidget {
 
 class _EpisodePageState extends ConsumerState<EpisodePage> {
   bool _loading = false;
-  bool _checkingCache = true;
+  bool _checkingDownload = true;
   bool _caching = false;
-  CachedEpisode? _cachedEpisode;
+  DownloadedEpisode? _downloadedEpisode;
 
   @override
   void initState() {
     super.initState();
-    _loadCacheState();
+    _loadDownloadsState();
   }
 
-  Future<void> _loadCacheState() async {
+  Future<void> _loadDownloadsState() async {
     try {
-      final cached = await ref
-          .read(audioCacheRepositoryProvider)
-          .cachedEpisode(widget.episode.id);
+      final downloaded = await ref
+          .read(episodeDownloadRepositoryProvider)
+          .downloadedEpisode(widget.episode.id);
       if (mounted) {
         setState(() {
-          _cachedEpisode = cached;
-          _checkingCache = false;
+          _downloadedEpisode = downloaded;
+          _checkingDownload = false;
         });
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'load_cache_state',
+        'load_download_state',
         error,
-        area: 'cache',
+        area: 'download',
         stackTrace: stackTrace,
         data: {'episodeId': widget.episode.id},
       );
       if (mounted) {
-        setState(() => _checkingCache = false);
+        setState(() => _checkingDownload = false);
       }
     }
   }
@@ -87,23 +87,23 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
     }
   }
 
-  Future<void> _cacheEpisode() async {
+  Future<void> _downloadEpisode() async {
     setState(() => _caching = true);
     try {
-      final cached = await ref
-          .read(audioCacheRepositoryProvider)
-          .cache(widget.episode);
+      final downloaded = await ref
+          .read(episodeDownloadRepositoryProvider)
+          .download(widget.episode);
       if (mounted) {
-        setState(() => _cachedEpisode = cached);
+        setState(() => _downloadedEpisode = downloaded);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
+        ).showSnackBar(const SnackBar(content: Text('已下载到本地')));
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'cache_episode',
+        'download_episode',
         error,
-        area: 'cache',
+        area: 'download',
         stackTrace: stackTrace,
         data: {'episodeId': widget.episode.id, 'title': widget.episode.title},
       );
@@ -230,14 +230,14 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                           ),
                           const SizedBox(width: 8),
                           IconButton.filledTonal(
-                            tooltip: _cacheTooltip(),
-                            icon: _cacheIcon(),
+                            tooltip: _downloadTooltip(),
+                            icon: _downloadIcon(),
                             onPressed:
-                                _checkingCache ||
+                                _checkingDownload ||
                                     _caching ||
-                                    _cachedEpisode != null
+                                    _downloadedEpisode != null
                                 ? null
-                                : _cacheEpisode,
+                                : _downloadEpisode,
                           ),
                           const SizedBox(width: 8),
                           IconButton.filled(
@@ -263,10 +263,10 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                           ),
                         ],
                       ),
-                      if (_cachedEpisode != null) ...[
+                      if (_downloadedEpisode != null) ...[
                         const SizedBox(height: 12),
                         Text(
-                          '已缓存 ${_formatBytes(_cachedEpisode!.bytes)}',
+                          '已下载 ${_formatBytes(_downloadedEpisode!.bytes)}',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
                                 color: Theme.of(
@@ -293,23 +293,25 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
     );
   }
 
-  Widget _cacheIcon() {
-    if (_checkingCache || _caching) {
+  Widget _downloadIcon() {
+    if (_checkingDownload || _caching) {
       return const SizedBox.square(
         dimension: 18,
         child: CircularProgressIndicator(strokeWidth: 2),
       );
     }
-    return Icon(_cachedEpisode == null ? Icons.download : Icons.offline_pin);
+    return Icon(
+      _downloadedEpisode == null ? Icons.download : Icons.offline_pin,
+    );
   }
 
-  String _cacheTooltip() {
-    if (_checkingCache) return '检查缓存';
+  String _downloadTooltip() {
+    if (_checkingDownload) return '检查下载';
     if (_caching) {
-      return _cachedEpisode == null ? '缓存中' : '读取缓存';
+      return _downloadedEpisode == null ? '下载中' : '读取下载';
     }
-    if (_cachedEpisode == null) return '缓存到本地';
-    return '已缓存 (${_formatBytes(_cachedEpisode!.bytes)})';
+    if (_downloadedEpisode == null) return '下载到本地';
+    return '已下载 (${_formatBytes(_downloadedEpisode!.bytes)})';
   }
 
   String _formatBytes(int bytes) {

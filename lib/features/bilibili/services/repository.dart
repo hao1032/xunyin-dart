@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/logging/app_logger.dart';
+import '../../../core/app_logger.dart';
 import '../../series/model.dart';
-import '../../podcast/model.dart';
+import '../../episode/model.dart';
 import '../../search/model.dart';
 import 'client.dart';
 
@@ -180,19 +180,19 @@ class BilibiliRepository {
     return loaded;
   }
 
-  Future<String> resolveAudioUrl(Episode episode) {
+  Future<String> resolveMediaUrl(Episode episode) {
     final bvid = episode.bvid;
     final cid = episode.cid;
     if (bvid == null || cid == null) {
       throw ArgumentError('B站 Episode 缺少 bvid 或 cid');
     }
     AppLogger.result(
-      'resolve_audio_url',
+      'resolve_media_url',
       area: 'bilibili',
       message: 'start',
       data: {'episodeId': episode.id, 'bvid': bvid, 'cid': cid},
     );
-    return _client.audioUrl(bvid: bvid, cid: cid);
+    return _client.mediaUrl(bvid: bvid, cid: cid);
   }
 
   SearchResult _searchResultFromJson(Map<String, dynamic> json) {

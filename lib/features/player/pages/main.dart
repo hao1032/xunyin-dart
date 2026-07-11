@@ -3,14 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/formatters/audio_formatters.dart';
-import '../../../core/widgets/app_layout.dart';
+import '../../../core/app_logger.dart';
+import '../../../core/display_formatters.dart';
+import '../../../core/app_layout.dart';
+import '../../episode/model.dart';
+import '../../episode/series_resolver.dart';
 import '../../series/model.dart';
-import '../../bilibili/services/repository.dart';
-import '../../library/repository.dart';
-import '../../podcast/model.dart';
-import '../../search/model.dart';
 import '../services/playback_queue.dart';
 import '../services/controller.dart';
 
@@ -19,7 +17,7 @@ class PlayerPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final player = ref.watch(appAudioPlayerProvider);
+    final player = ref.watch(appPlayerProvider);
     final queue = ref.watch(playbackQueueProvider);
     final episode = queue.current;
     return Scaffold(
@@ -182,128 +180,20 @@ class PlayerPage extends ConsumerWidget {
     Episode episode,
     PlaybackQueueState queue,
   ) async {
-    final subscriptions = await ref
-        .read(libraryRepositoryProvider)
-        .subscriptions();
-    final subscribed = subscriptions.where((series) {
-      return series.id == episode.seriesId ||
-          series.episodes.any((item) => item.id == episode.id);
-    }).firstOrNull;
-    if (subscribed != null) return subscribed;
-
-    if (episode.sourceType == SourceType.bilibili && episode.bvid != null) {
-      final series = await _resolveBilibiliSeries(ref, episode);
-      if (series != null) return series;
-    }
-
-    final queuedSeries = queue.items.where((entry) {
-      return entry.type == PlaybackQueueEntryType.series &&
-          entry.containsEpisode(episode.id);
-    }).firstOrNull;
-    if (queuedSeries != null) {
-      return _seriesFromEpisode(
-        id: queuedSeries.id,
-        title: queuedSeries.title,
-        originalUrl: episode.originalUrl,
-        author: episode.author,
-        imageUrl: queuedSeries.episodes.first.imageUrl ?? episode.imageUrl,
-        episodes: queuedSeries.episodes,
-        episode: episode,
-      );
-    }
-
-    return _seriesFromEpisode(
-      id: episode.seriesId,
-      title: episode.author ?? episode.sourceType.label,
-      originalUrl: episode.originalUrl,
-      author: episode.author,
-      imageUrl: episode.imageUrl,
-      episodes: [episode],
-      episode: episode,
-    );
-  }
-
-  Series _seriesFromEpisode({
-    required String id,
-    required String title,
-    required String originalUrl,
-    required String? author,
-    required String? imageUrl,
-    required List<Episode> episodes,
-    required Episode episode,
-  }) {
-    if (episode.sourceType != SourceType.bilibili) {
-      return RssPodcastSeries(
-        id: id,
-        title: title,
-        originalUrl: originalUrl,
-        feedUrl: _rssFeedUrl(episode) ?? originalUrl,
-        author: author,
-        imageUrl: imageUrl,
-        episodes: episodes,
-      );
-    }
-    if (episode.seriesId.startsWith('bili-up-')) {
-      return BilibiliCreatorSeries(
-        id: id,
-        title: title,
-        originalUrl: originalUrl,
-        author: author,
-        imageUrl: imageUrl,
-        episodes: episodes,
-      );
-    }
-    return BilibiliCollectionSeries(
-      id: id,
-      title: title,
-      originalUrl: originalUrl,
-      author: author,
-      imageUrl: imageUrl,
-      episodes: episodes,
-    );
-  }
-
-  Future<Series?> _resolveBilibiliSeries(WidgetRef ref, Episode episode) async {
-    try {
-      final context = await ref
-          .read(bilibiliRepositoryProvider)
-          .resolveEpisodeContext(
-            SearchResult(
-              id: episode.id,
-              title: episode.title,
-              sourceType: episode.sourceType,
-              originalUrl: episode.originalUrl,
-              imageUrl: episode.imageUrl,
-              duration: episode.duration,
-              publishedAt: episode.publishedAt,
-              bvid: episode.bvid,
-            ),
-          );
-      final collection = context.collectionSeries;
-      if (collection != null && collection.id == episode.seriesId) {
-        return collection;
-      }
-      if (episode.seriesId.startsWith('bili-season-') && collection != null) {
-        return collection;
-      }
-      return context.creatorSeries;
-    } catch (error, stackTrace) {
-      AppLogger.failure(
-        'resolve_series_from_player',
-        error,
-        area: 'player',
-        stackTrace: stackTrace,
-        data: {'episodeId': episode.id, 'bvid': episode.bvid},
-      );
-      return null;
-    }
-  }
-
-  String? _rssFeedUrl(Episode episode) {
-    if (episode.sourceType != SourceType.rss) return null;
-    if (!episode.seriesId.startsWith('rss-')) return null;
-    final feedUrl = episode.seriesId.substring('rss-'.length);
-    return feedUrl.isEmpty ? null : feedUrl;
+    return ref
+        .read(episodeSeriesResolverProvider)
+        .resolve(
+          episode,
+          queuedSeries: queue.items
+              .where((entry) => entry.type == PlaybackQueueEntryType.series)
+              .map(
+                (entry) => EpisodeSeriesCandidate(
+                  id: entry.id,
+                  title: entry.title,
+                  episodes: entry.episodes,
+                ),
+              ),
+        );
   }
 }
 

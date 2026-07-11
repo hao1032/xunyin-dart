@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class AudioListItem extends StatelessWidget {
-  const AudioListItem({
+class AppListItem extends StatelessWidget {
+  const AppListItem({
     super.key,
     required this.title,
     required this.metadata,
@@ -63,7 +63,7 @@ class AudioListItem extends StatelessWidget {
         final header = Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            AudioCover(url: coverUrl, size: coverSize, icon: placeholderIcon),
+            AppCover(url: coverUrl, size: coverSize, icon: placeholderIcon),
             const SizedBox(width: 12),
             details,
             if (actions.isNotEmpty && !stackActions) ...[
@@ -101,8 +101,8 @@ class AudioListItem extends StatelessWidget {
   }
 }
 
-class AudioCover extends StatelessWidget {
-  const AudioCover({
+class AppCover extends StatelessWidget {
+  const AppCover({
     super.key,
     required this.url,
     required this.size,

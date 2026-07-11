@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/network/http_client.dart';
+import '../../../core/app_logger.dart';
+import '../../../core/http_client.dart';
 import '../../search/model.dart';
 import '../../series/model.dart';
 import 'apple_client.dart';

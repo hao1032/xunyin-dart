@@ -5,10 +5,10 @@ import 'dart:io';
 
 import 'package:just_audio/just_audio.dart';
 
-import '../../../core/logging/app_logger.dart';
+import '../../../core/app_logger.dart';
 
-class BilibiliAudioSource extends StreamAudioSource {
-  BilibiliAudioSource({
+class BilibiliEpisodeStreamSource extends StreamAudioSource {
+  BilibiliEpisodeStreamSource({
     required this.uri,
     required this.headers,
     required this.episodeId,

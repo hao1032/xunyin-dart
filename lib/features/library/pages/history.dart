@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/formatters/audio_formatters.dart';
-import '../../audio/list_item.dart';
-import '../../cache/repository.dart';
+import '../../../core/app_logger.dart';
+import '../../../core/display_formatters.dart';
+import '../../app_list_item.dart';
+import '../../downloads/repository.dart';
 import '../../player/services/playback_queue.dart';
 import '../../player/services/controller.dart';
 import '../../player/pages/mini.dart';
-import '../../podcast/model.dart';
+import '../../episode/model.dart';
 import '../repository.dart';
 
 class HistoryPage extends ConsumerStatefulWidget {
@@ -21,14 +21,14 @@ class HistoryPage extends ConsumerStatefulWidget {
 
 class _HistoryPageState extends ConsumerState<HistoryPage> {
   late Future<List<Episode>> _historyFuture;
-  final Set<String> _cachedEpisodeIds = {};
+  final Set<String> _downloadedEpisodeIds = {};
   final Set<String> _busyEpisodeIds = {};
 
   @override
   void initState() {
     super.initState();
     _historyFuture = _loadHistory();
-    _loadCachedEpisodes();
+    _loadDownloadedEpisodes();
   }
 
   Future<List<Episode>> _loadHistory() async {
@@ -41,23 +41,23 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     return history;
   }
 
-  Future<void> _loadCachedEpisodes() async {
+  Future<void> _loadDownloadedEpisodes() async {
     try {
-      final cached = await ref
-          .read(audioCacheRepositoryProvider)
-          .cachedEpisodes();
+      final downloaded = await ref
+          .read(episodeDownloadRepositoryProvider)
+          .downloadedEpisodes();
       if (mounted) {
         setState(() {
-          _cachedEpisodeIds
+          _downloadedEpisodeIds
             ..clear()
-            ..addAll(cached.map((item) => item.episode.id));
+            ..addAll(downloaded.map((item) => item.episode.id));
         });
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'load_history_cache_state',
+        'load_history_download_state',
         error,
-        area: 'cache',
+        area: 'download',
         stackTrace: stackTrace,
       );
     }
@@ -85,9 +85,11 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                   itemCount: history.length,
                   itemBuilder: (context, index) {
                     final episode = history[index];
-                    final cached = _cachedEpisodeIds.contains(episode.id);
+                    final downloaded = _downloadedEpisodeIds.contains(
+                      episode.id,
+                    );
                     final busy = _busyEpisodeIds.contains(episode.id);
-                    return AudioListItem(
+                    return AppListItem(
                       coverUrl: episode.imageUrl,
                       title: episode.title,
                       metadata: [
@@ -122,7 +124,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                           },
                         ),
                         IconButton(
-                          tooltip: cached ? '已缓存' : '缓存到本地',
+                          tooltip: downloaded ? '已下载' : '下载到本地',
                           icon: busy
                               ? const SizedBox.square(
                                   dimension: 18,
@@ -131,13 +133,13 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                                   ),
                                 )
                               : Icon(
-                                  cached
+                                  downloaded
                                       ? Icons.offline_pin
                                       : Icons.download_outlined,
                                 ),
-                          onPressed: busy || cached
+                          onPressed: busy || downloaded
                               ? null
-                              : () => _toggleCache(episode),
+                              : () => _toggleDownload(episode),
                         ),
                         IconButton(
                           tooltip: '播放',
@@ -176,23 +178,23 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     }
   }
 
-  Future<void> _toggleCache(Episode episode) async {
+  Future<void> _toggleDownload(Episode episode) async {
     if (_busyEpisodeIds.contains(episode.id)) return;
-    if (_cachedEpisodeIds.contains(episode.id)) return;
+    if (_downloadedEpisodeIds.contains(episode.id)) return;
     setState(() => _busyEpisodeIds.add(episode.id));
     try {
-      await ref.read(audioCacheRepositoryProvider).cache(episode);
+      await ref.read(episodeDownloadRepositoryProvider).download(episode);
       if (mounted) {
-        setState(() => _cachedEpisodeIds.add(episode.id));
+        setState(() => _downloadedEpisodeIds.add(episode.id));
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('已缓存到本地')));
+        ).showSnackBar(const SnackBar(content: Text('已下载到本地')));
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
-        'toggle_history_cache',
+        'toggle_history_download',
         error,
-        area: 'cache',
+        area: 'download',
         stackTrace: stackTrace,
         data: {'episodeId': episode.id, 'title': episode.title},
       );

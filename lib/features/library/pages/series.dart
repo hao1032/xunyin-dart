@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../audio/list_item.dart';
+import '../../../core/app_logger.dart';
+import '../../app_list_item.dart';
 import '../../series/model.dart';
 import '../../player/pages/mini.dart';
 import '../repository.dart';
@@ -62,7 +62,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
                   itemCount: subscriptions.length,
                   itemBuilder: (context, index) {
                     final series = subscriptions[index];
-                    return AudioListItem(
+                    return AppListItem(
                       coverUrl: series.imageUrl,
                       placeholderIcon: _seriesIcon(series),
                       title: series.title,

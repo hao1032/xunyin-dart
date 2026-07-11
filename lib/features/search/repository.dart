@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bilibili/services/repository.dart';
 import '../podcast/services/repository.dart';
-import '../podcast/model.dart';
+import '../episode/model.dart';
 import 'model.dart';
 
 final searchRepositoryProvider = Provider<SearchRepository>((ref) {

@@ -1,34 +1,34 @@
-import '../podcast/model.dart';
+import '../episode/model.dart';
 
-class CachedEpisode {
-  const CachedEpisode({
+class DownloadedEpisode {
+  const DownloadedEpisode({
     required this.episode,
     required this.filePath,
     required this.bytes,
-    required this.cachedAt,
+    required this.downloadedAt,
   });
 
   final Episode episode;
   final String filePath;
   final int bytes;
-  final DateTime cachedAt;
+  final DateTime downloadedAt;
 
   Map<String, Object?> toJson() => {
     'episode': episode.toJson(),
     'filePath': filePath,
     'bytes': bytes,
-    'cachedAt': cachedAt.toIso8601String(),
+    'downloadedAt': downloadedAt.toIso8601String(),
   };
 
-  factory CachedEpisode.fromJson(Map<String, Object?> json) {
-    return CachedEpisode(
+  factory DownloadedEpisode.fromJson(Map<String, Object?> json) {
+    return DownloadedEpisode(
       episode: Episode.fromJson(
         (json['episode'] as Map).cast<String, Object?>(),
       ),
       filePath: json['filePath'] as String,
       bytes: json['bytes'] as int,
-      cachedAt:
-          DateTime.tryParse(json['cachedAt'] as String? ?? '') ??
+      downloadedAt:
+          DateTime.tryParse(json['downloadedAt'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );
   }

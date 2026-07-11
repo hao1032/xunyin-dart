@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/logging/app_logger.dart';
+import '../../../core/app_logger.dart';
 import '../../../core/storage/app_json_store.dart';
-import '../../podcast/model.dart';
+import '../../episode/model.dart';
 import '../../series/model.dart';
 
 final playbackQueueProvider =

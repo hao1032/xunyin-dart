@@ -22,7 +22,7 @@ class Episode {
     this.description,
     this.author,
     this.imageUrl,
-    this.audioUrl,
+    this.mediaUrl,
     this.duration,
     this.publishedAt,
     this.bvid,
@@ -39,7 +39,7 @@ class Episode {
   final String? description;
   final String? author;
   final String? imageUrl;
-  final String? audioUrl;
+  final String? mediaUrl;
   final Duration? duration;
   final DateTime? publishedAt;
   final String? bvid;
@@ -56,7 +56,7 @@ class Episode {
     'description': description,
     'author': author,
     'imageUrl': imageUrl,
-    'audioUrl': audioUrl,
+    'mediaUrl': mediaUrl,
     'duration': duration?.inMilliseconds,
     'publishedAt': publishedAt?.toIso8601String(),
     'bvid': bvid,
@@ -75,7 +75,7 @@ class Episode {
       description: json['description'] as String?,
       author: json['author'] as String?,
       imageUrl: json['imageUrl'] as String?,
-      audioUrl: json['audioUrl'] as String?,
+      mediaUrl: json['mediaUrl'] as String?,
       duration: json['duration'] == null
           ? null
           : Duration(milliseconds: json['duration'] as int),
@@ -98,7 +98,7 @@ class PlayableItem {
     required this.originalUrl,
     this.author,
     this.imageUrl,
-    this.audioUrl,
+    this.mediaUrl,
     this.bvid,
     this.cid,
   });
@@ -109,7 +109,7 @@ class PlayableItem {
   final String originalUrl;
   final String? author;
   final String? imageUrl;
-  final String? audioUrl;
+  final String? mediaUrl;
   final String? bvid;
   final int? cid;
 
@@ -121,7 +121,7 @@ class PlayableItem {
       originalUrl: episode.originalUrl,
       author: episode.author,
       imageUrl: episode.imageUrl,
-      audioUrl: episode.audioUrl,
+      mediaUrl: episode.mediaUrl,
       bvid: episode.bvid,
       cid: episode.cid,
     );

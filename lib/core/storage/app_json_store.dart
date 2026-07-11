@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../logging/app_logger.dart';
+import '../app_logger.dart';
 
 final appJsonStoreProvider = Provider<AppJsonStore>((ref) => AppJsonStore());
 

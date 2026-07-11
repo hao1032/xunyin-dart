@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/network/http_client.dart';
+import '../../../core/app_logger.dart';
+import '../../../core/http_client.dart';
+import '../../episode/model.dart';
 import '../../search/model.dart';
-import '../model.dart';
 
 final applePodcastClientProvider = Provider<ApplePodcastClient>((ref) {
   return ApplePodcastClient(ref.watch(dioProvider));
@@ -68,7 +68,7 @@ class ApplePodcastClient {
             json['artworkUrl600'] as String? ??
             json['artworkUrl100'] as String?,
         feedUrl: feedUrl,
-        audioUrl: json['episodeUrl'] as String?,
+        mediaUrl: json['episodeUrl'] as String?,
         duration: _durationFromMillis(json['trackTimeMillis'] as num?),
         publishedAt: DateTime.tryParse(json['releaseDate'] as String? ?? ''),
         seriesTitle: collectionName,

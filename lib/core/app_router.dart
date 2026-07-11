@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/cache/page.dart';
-import '../../features/home/page.dart';
-import '../../features/library/pages/history.dart';
-import '../../features/library/pages/main.dart';
-import '../../features/library/pages/series.dart';
-import '../../features/podcast/model.dart';
-import '../../features/series/model.dart';
-import '../../features/podcast/pages/episode.dart';
-import '../../features/player/pages/main.dart';
-import '../../features/podcast/pages/series_detail.dart';
-import '../../features/player/pages/queue.dart';
-import '../../features/search/model.dart';
-import '../../features/search/pages/result.dart';
-import '../../features/search/pages/main.dart';
-import '../../features/settings/page.dart';
+import '../features/downloads/page.dart';
+import '../features/home.dart';
+import '../features/library/pages/history.dart';
+import '../features/library/pages/main.dart';
+import '../features/library/pages/series.dart';
+import '../features/episode/model.dart';
+import '../features/series/model.dart';
+import '../features/episode/page.dart';
+import '../features/player/pages/main.dart';
+import '../features/series/page.dart';
+import '../features/player/pages/queue.dart';
+import '../features/search/model.dart';
+import '../features/search/pages/result.dart';
+import '../features/search/pages/main.dart';
+import '../features/settings.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -37,8 +37,8 @@ final appRouter = GoRouter(
     ),
     GoRoute(path: '/history', builder: (context, state) => const HistoryPage()),
     GoRoute(
-      path: '/cache',
-      builder: (context, state) => const CacheManagementPage(),
+      path: '/downloads',
+      builder: (context, state) => const DownloadsPage(),
     ),
     GoRoute(path: '/queue', builder: (context, state) => const QueuePage()),
     GoRoute(path: '/player', builder: (context, state) => const PlayerPage()),
