@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:xunyin_dart/features/bilibili/data/bilibili_client.dart';
-import 'package:xunyin_dart/features/bilibili/data/bilibili_repository.dart';
-import 'package:xunyin_dart/features/podcast/domain/podcast_show.dart';
-import 'package:xunyin_dart/features/podcast/domain/source_type.dart';
-import 'package:xunyin_dart/features/search/domain/search_result.dart';
+import 'package:xunyin_dart/features/bilibili/services/client.dart';
+import 'package:xunyin_dart/features/bilibili/services/repository.dart';
+import 'package:xunyin_dart/features/channel/model.dart';
+import 'package:xunyin_dart/features/podcast/model.dart';
+import 'package:xunyin_dart/features/search/model.dart';
 
 void main() {
   test('marks B站 search rows without bvid as unavailable', () async {
@@ -46,7 +46,7 @@ void main() {
     );
   });
 
-  test('converts multipart B站 videos into a PodcastShow', () async {
+  test('converts multipart B站 videos into an AudioShow', () async {
     final repository = BilibiliRepository(
       _FakeBilibiliClient(
         detail: {
@@ -66,6 +66,7 @@ void main() {
     final show = await repository.resolveAsShow(_result());
 
     expect(show.title, 'Long Talk');
+    expect(show, isA<BilibiliCollectionShow>());
     expect(show.episodes, hasLength(2));
     expect(show.episodes.first.title, 'Part 1');
     expect(show.episodes.first.cid, 101);
@@ -93,7 +94,7 @@ void main() {
     expect(show.episodes.single.sourceType, SourceType.bilibili);
   });
 
-  test('converts B站 ugc season into a PodcastShow', () async {
+  test('converts B站 ugc season into an AudioShow', () async {
     final repository = BilibiliRepository(
       _FakeBilibiliClient(
         detail: {
@@ -119,6 +120,7 @@ void main() {
     final show = await repository.resolveAsShow(_result());
 
     expect(show.id, 'bili-season-88');
+    expect(show, isA<BilibiliCollectionShow>());
     expect(show.title, 'Season Talk');
     expect(show.episodes.map((episode) => episode.bvid), ['BV101', 'BV102']);
   });
@@ -152,10 +154,9 @@ void main() {
     );
 
     final show = await repository.loadCreatorShow(
-      const PodcastShow(
+      const BilibiliCreatorShow(
         id: 'bili-up-42',
         title: 'Alice',
-        sourceType: SourceType.bilibili,
         originalUrl: 'https://space.bilibili.com/42',
       ),
     );
@@ -164,6 +165,7 @@ void main() {
       'Video 1',
       'Video 2',
     ]);
+    expect(show, isA<BilibiliCreatorShow>());
     expect(show.episodes.first.cid, 201);
     expect(show.episodes.first.duration, const Duration(seconds: 60));
   });

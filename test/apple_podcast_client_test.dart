@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:xunyin_dart/features/podcast/data/apple_podcast_client.dart';
+import 'package:xunyin_dart/features/podcast/services/apple_client.dart';
 
 void main() {
   test('parses Apple search body when Dio returns a JSON string', () {

@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/podcast/domain/episode.dart';
-import '../../features/podcast/domain/podcast_show.dart';
-import '../../features/cache/domain/cached_episode.dart';
+import '../../features/podcast/model.dart';
+import '../../features/channel/model.dart';
+import '../../features/cache/model.dart';
 import 'app_json_store.dart';
 
 final libraryStoreProvider = Provider<LibraryStore>((ref) {
@@ -21,18 +21,16 @@ class LibraryStore {
 
   final AppJsonStore _jsonStore;
 
-  Future<List<PodcastShow>> loadSubscriptions() async {
+  Future<List<AudioShow>> loadSubscriptions() async {
     final data = await _loadSubscriptions();
-    return _decodeList(
-      data['subscriptions'],
-    ).map(PodcastShow.fromJson).toList();
+    return _decodeList(data['subscriptions']).map(AudioShow.fromJson).toList();
   }
 
-  Future<void> saveSubscription(PodcastShow show) async {
+  Future<void> saveSubscription(AudioShow show) async {
     final data = await _loadSubscriptions();
     final shows = _decodeList(
       data['subscriptions'],
-    ).map(PodcastShow.fromJson).toList();
+    ).map(AudioShow.fromJson).toList();
     final next = [show, ...shows.where((item) => item.id != show.id)];
     data['subscriptions'] = next.map((item) => item.toJson()).toList();
     await _saveSubscriptions(data);
@@ -42,7 +40,7 @@ class LibraryStore {
     final data = await _loadSubscriptions();
     final shows = _decodeList(
       data['subscriptions'],
-    ).map(PodcastShow.fromJson).where((item) => item.id != showId).toList();
+    ).map(AudioShow.fromJson).where((item) => item.id != showId).toList();
     data['subscriptions'] = shows.map((item) => item.toJson()).toList();
     await _saveSubscriptions(data);
   }

@@ -1,15 +1,16 @@
 # 寻音
 
-寻音是一个 Flutter 音频应用，用来搜索、整理和播放 B 站视频与播客内容。它把视频、播客节目、分 P、合集和 UP 主投稿统一成「节目 / 单集」模型，让长内容可以像播客一样加入播放列表、记录进度和离线缓存。
+寻音是一个 Flutter 音频应用，用来搜索、整理和播放 B 站视频与播客内容。它把 B站合集、B站UP主和 RSS 播客统一成「频道」，把视频、分 P 与播客单集统一成「单集」，让不同来源的长内容拥有一致的订阅、播放和缓存体验。
 
 ## 功能概览
 
 - 搜索 B 站视频、Apple Podcast，或同时搜索全部来源。
-- 将 B 站单视频、分 P 视频、UGC 合集解析为可播放节目。
+- 将 B 站单视频、分 P 视频、UGC 合集解析为可播放频道与单集。
 - 支持从 Apple Podcast 搜索结果加载 RSS feed 并解析节目单集。
 - 播放音频内容，支持播放列表、迷你播放器和独立播放页。
 - 自动记录播放历史与播放进度，下次播放时恢复位置。
-- 支持订阅节目、查看历史记录、管理本地音频缓存。
+- 支持在同一级别订阅 B站合集、B站UP主与 RSS 播客频道。
+- 查看历史记录、管理本地音频缓存。
 - B 站音频播放和缓存会按需解析真实音频地址，并带上必要请求头。
 - macOS 运行时使用接近移动端的固定窗口尺寸，便于调试移动体验。
 
@@ -65,7 +66,9 @@ flutter test
 ```text
 lib/
   core/
-    app.dart                 # 应用入口组件与主题
+    app.dart                 # 应用入口组件
+    theme/                   # Material 3 明暗主题
+    formatters/              # 共享时间与时长格式化
     errors/                  # 应用错误模型
     logging/                 # 结构化日志
     network/                 # Dio 客户端
@@ -73,14 +76,15 @@ lib/
     storage/                 # JSON 本地存储
     text/                    # 文本清洗工具
   features/
-    audio/                   # 通用音频列表 UI
-    bilibili/                # B 站接口与数据转换
+    audio/                   # 通用音频组件
+    bilibili/services/       # B 站接口与数据转换
     cache/                   # 音频缓存
+    channel/                 # 跨来源统一频道模型与加载服务
     home/                    # 底部导航主界面
-    library/                 # 订阅、历史与播放进度
+    library/                 # 频道、历史与播放进度
     player/                  # 播放器、播放队列、B 站音频源
-    podcast/                 # 播客模型、RSS 与 Apple Podcast
-    search/                  # 搜索入口与结果页
+    podcast/                 # 单集模型、RSS 与 Apple Podcast
+    search/                  # 搜索页面与聚合服务
     settings/                # 设置页
 test/                        # 数据层和解析逻辑测试
 ```
@@ -98,12 +102,13 @@ test/                        # 数据层和解析逻辑测试
 
 ## 开发提示
 
-- 搜索入口位于 `SearchScreen`，数据聚合逻辑在 `SearchRepository`。
+- 搜索入口位于 `SearchPage`，数据聚合逻辑在 `SearchRepository`。
 - B 站相关解析集中在 `BilibiliRepository`，底层请求在 `BilibiliClient`。
 - 播客 RSS 加载和解析由 `PodcastRepository` 与 `RssParser` 负责。
+- 跨来源频道加载集中在 `ChannelService`，页面不再分别判断 B站UP主或 RSS 播客。
 - 播放控制集中在 `PlaybackController`，它负责解析音频地址、恢复进度、记录历史和优先播放本地缓存。
 - 本地资料库写入通过 `LibraryRepository` 和 `LibraryStore` 完成。
 
 ## 项目状态
 
-项目仍处于早期开发阶段，界面和功能会继续迭代。当前重点是打通跨来源搜索、节目化整理、播放队列、播放进度和离线缓存这些核心链路。
+项目已完成跨来源频道模型和主要收听链路，当前重点是继续完善真实设备体验、频道发现能力与播放稳定性。

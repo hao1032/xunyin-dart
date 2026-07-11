@@ -1,71 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/cache/presentation/cache_management_screen.dart';
-import '../../features/home/presentation/main_tab_screen.dart';
-import '../../features/library/presentation/history_screen.dart';
-import '../../features/library/presentation/library_screen.dart';
-import '../../features/library/presentation/subscriptions_screen.dart';
-import '../../features/podcast/domain/episode.dart';
-import '../../features/podcast/domain/podcast_show.dart';
-import '../../features/podcast/presentation/episode_screen.dart';
-import '../../features/player/presentation/player_screen.dart';
-import '../../features/podcast/presentation/show_detail_screen.dart';
-import '../../features/player/presentation/queue_screen.dart';
-import '../../features/search/domain/search_result.dart';
-import '../../features/search/presentation/search_result_screen.dart';
-import '../../features/search/presentation/search_screen.dart';
+import '../../features/cache/page.dart';
+import '../../features/home/page.dart';
+import '../../features/library/pages/history.dart';
+import '../../features/library/pages/main.dart';
+import '../../features/library/pages/channels.dart';
+import '../../features/podcast/model.dart';
+import '../../features/channel/model.dart';
+import '../../features/podcast/pages/episode.dart';
+import '../../features/player/pages/main.dart';
+import '../../features/podcast/pages/channel_detail.dart';
+import '../../features/player/pages/queue.dart';
+import '../../features/search/model.dart';
+import '../../features/search/pages/result.dart';
+import '../../features/search/pages/main.dart';
+import '../../features/settings/page.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const MainTabScreen()),
-    GoRoute(path: '/search', builder: (context, state) => const SearchScreen()),
+    GoRoute(path: '/', builder: (context, state) => const MainShellPage()),
+    GoRoute(path: '/search', builder: (context, state) => const SearchPage()),
     GoRoute(
       path: '/search/result',
       builder: (context, state) {
         final result = state.extra;
         if (result is! SearchResult) return const _MissingRouteData();
-        return SearchResultScreen(result: result);
+        return SearchResultPage(result: result);
       },
     ),
-    GoRoute(
-      path: '/library',
-      builder: (context, state) => const LibraryScreen(),
-    ),
+    GoRoute(path: '/library', builder: (context, state) => const LibraryPage()),
     GoRoute(
       path: '/subscriptions',
-      builder: (context, state) => const SubscriptionsScreen(),
+      builder: (context, state) => const ChannelsPage(),
     ),
-    GoRoute(
-      path: '/history',
-      builder: (context, state) => const HistoryScreen(),
-    ),
+    GoRoute(path: '/history', builder: (context, state) => const HistoryPage()),
     GoRoute(
       path: '/cache',
-      builder: (context, state) => const CacheManagementScreen(),
+      builder: (context, state) => const CacheManagementPage(),
     ),
-    GoRoute(path: '/queue', builder: (context, state) => const QueueScreen()),
-    GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),
+    GoRoute(path: '/queue', builder: (context, state) => const QueuePage()),
+    GoRoute(path: '/player', builder: (context, state) => const PlayerPage()),
     GoRoute(
-      path: '/show',
+      path: '/settings',
+      builder: (context, state) => const SettingsPage(),
+    ),
+    GoRoute(
+      path: '/channel',
       builder: (context, state) {
         final show = state.extra;
-        if (show is! PodcastShow) return const _MissingRouteData();
-        return ShowDetailScreen(show: show);
+        if (show is! AudioShow) return const _MissingRouteData();
+        return ChannelDetailPage(show: show);
       },
     ),
     GoRoute(
       path: '/episode',
       builder: (context, state) {
         final extra = state.extra;
-        if (extra is EpisodeScreenArgs) {
-          return EpisodeScreen(
+        if (extra is EpisodePageArgs) {
+          return EpisodePage(
             episode: extra.episode,
             relatedShows: extra.relatedShows,
           );
         }
-        if (extra is Episode) return EpisodeScreen(episode: extra);
+        if (extra is Episode) return EpisodePage(episode: extra);
         return const _MissingRouteData();
       },
     ),

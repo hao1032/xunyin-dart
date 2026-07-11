@@ -1,9 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:xunyin_dart/features/podcast/data/rss_parser.dart';
-import 'package:xunyin_dart/features/podcast/domain/source_type.dart';
+import 'package:xunyin_dart/features/channel/model.dart';
+import 'package:xunyin_dart/features/podcast/services/rss_parser.dart';
+import 'package:xunyin_dart/features/podcast/model.dart';
 
 void main() {
-  test('parses an RSS feed into a PodcastShow with episodes', () {
+  test('parses an RSS feed into an AudioShow with episodes', () {
     final show = RssParser().parse('''
       <rss>
         <channel>
@@ -24,6 +25,7 @@ void main() {
 
     expect(show.title, 'Example Show');
     expect(show.sourceType, SourceType.rss);
+    expect(show, isA<RssPodcastShow>());
     expect(show.episodes, hasLength(1));
     expect(show.episodes.single.audioUrl, 'https://example.com/ep-1.mp3');
     expect(
