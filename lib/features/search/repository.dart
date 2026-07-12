@@ -32,17 +32,30 @@ class SearchRepository {
   final BilibiliRepository _bilibiliRepository;
   final PodcastRepository _podcastRepository;
 
-  Future<List<SearchResult>> search(String keyword, SearchScope scope) async {
+  Future<List<SearchResult>> search(
+    String keyword,
+    SearchScope scope, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     return switch (scope) {
-      SearchScope.bilibili => _bilibiliRepository.search(keyword),
+      SearchScope.bilibili => _bilibiliRepository.search(
+        keyword,
+        page: page,
+        pageSize: pageSize,
+      ),
       SearchScope.podcast => _podcastRepository.searchApple(keyword),
-      SearchScope.all => _searchAll(keyword),
+      SearchScope.all => _searchAll(keyword, page: page, pageSize: pageSize),
     };
   }
 
-  Future<List<SearchResult>> _searchAll(String keyword) async {
+  Future<List<SearchResult>> _searchAll(
+    String keyword, {
+    required int page,
+    required int pageSize,
+  }) async {
     final results = await Future.wait([
-      _bilibiliRepository.search(keyword),
+      _bilibiliRepository.search(keyword, page: page, pageSize: pageSize),
       _podcastRepository.searchApple(keyword),
     ]);
     return [

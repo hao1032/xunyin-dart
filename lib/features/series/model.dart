@@ -54,7 +54,8 @@ sealed class Series {
   static List<Episode> _episodesFromJson(Map<String, Object?> json) {
     return (json['episodes'] as List<dynamic>? ?? const [])
         .whereType<Map>()
-        .map((item) => Episode.fromJson(item.cast<String, Object?>()))
+        .map((item) => Episode.tryFromJson(item.cast<String, Object?>()))
+        .whereType<Episode>()
         .toList();
   }
 

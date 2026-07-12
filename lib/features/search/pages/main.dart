@@ -26,9 +26,14 @@ class SearchPage extends ConsumerStatefulWidget {
 }
 
 class _SearchPageState extends ConsumerState<SearchPage> {
+  static const _pageSize = 20;
+
   final _controller = TextEditingController();
   SearchScope _scope = SearchScope.all;
   AsyncValue<List<SearchResult>> _results = const AsyncData([]);
+  int _page = 1;
+  bool _hasNextPage = false;
+  String? _lastKeyword;
 
   @override
   void dispose() {
@@ -36,39 +41,61 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     super.dispose();
   }
 
-  Future<void> _search() async {
+  Future<void> _search({int page = 1}) async {
     final keyword = _controller.text.trim();
     if (keyword.isEmpty) return;
     AppLogger.userAction(
       'search',
       area: 'search',
-      data: {'keyword': keyword, 'scope': _scope.name},
+      data: {'keyword': keyword, 'scope': _scope.name, 'page': page},
     );
     setState(() => _results = const AsyncLoading());
     final repository = ref.read(searchRepositoryProvider);
     try {
-      final results = await repository.search(keyword, _scope);
+      final results = await repository.search(
+        keyword,
+        _scope,
+        page: page,
+        pageSize: _pageSize,
+      );
       AppLogger.result(
         'search',
         area: 'search',
         data: {
           'keyword': keyword,
           'scope': _scope.name,
+          'page': page,
           'count': results.length,
         },
       );
-      if (mounted) setState(() => _results = AsyncData(results));
+      if (mounted) {
+        setState(() {
+          _results = AsyncData(results);
+          _page = page;
+          _lastKeyword = keyword;
+          _hasNextPage = _canLoadNextPage(results);
+        });
+      }
     } catch (error, stackTrace) {
       AppLogger.failure(
         'search',
         error,
         area: 'search',
         stackTrace: stackTrace,
-        data: {'keyword': keyword, 'scope': _scope.name},
+        data: {'keyword': keyword, 'scope': _scope.name, 'page': page},
       );
       if (mounted) setState(() => _results = AsyncError(error, stackTrace));
     }
   }
+
+  bool _canLoadNextPage(List<SearchResult> results) {
+    return switch (_scope) {
+      SearchScope.bilibili => results.length == _pageSize,
+      SearchScope.all || SearchScope.podcast => false,
+    };
+  }
+
+  bool get _showPager => _scope == SearchScope.bilibili && _lastKeyword != null;
 
   Future<void> _open(SearchResult result) async {
     if (!_canOpen(result)) {
@@ -139,7 +166,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     suffixIcon: IconButton(
                       tooltip: '搜索',
                       icon: const Icon(Icons.arrow_forward_rounded),
-                      onPressed: _search,
+                      onPressed: () => _search(),
                     ),
                   ),
                   onSubmitted: (_) => _search(),
@@ -174,25 +201,40 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           Expanded(
             child: _results.when(
               data: (results) {
-                if (results.isEmpty) {
+                if (results.isEmpty && _lastKeyword == null) {
                   return const _SearchWelcome();
                 }
                 return Align(
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 720),
-                    child: ListView.separated(
+                    child: ListView(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      itemCount: results.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 2),
-                      itemBuilder: (context, index) {
-                        final result = results[index];
-                        return _SearchResultTile(
-                          result: result,
-                          enabled: _canOpen(result),
-                          onTap: () => _open(result),
-                        );
-                      },
+                      children: [
+                        if (results.isEmpty) const _SearchEmpty(),
+                        ...results.map((result) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: _SearchResultTile(
+                              result: result,
+                              enabled: _canOpen(result),
+                              onTap: () => _open(result),
+                            ),
+                          );
+                        }),
+                        if (_showPager)
+                          _SearchPager(
+                            page: _page,
+                            loading: _results.isLoading,
+                            hasNextPage: _hasNextPage,
+                            onPrevious: _page <= 1
+                                ? null
+                                : () => _search(page: _page - 1),
+                            onNext: _hasNextPage
+                                ? () => _search(page: _page + 1)
+                                : null,
+                          ),
+                      ],
                     ),
                   ),
                 );
@@ -225,7 +267,7 @@ class _SearchWelcome extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(10),
                   gradient: LinearGradient(
                     colors: [
                       colors.primaryContainer,
@@ -287,6 +329,67 @@ class _SearchWelcome extends StatelessWidget {
   }
 }
 
+class _SearchEmpty extends StatelessWidget {
+  const _SearchEmpty();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 40),
+      child: Center(child: Text('没有更多结果')),
+    );
+  }
+}
+
+class _SearchPager extends StatelessWidget {
+  const _SearchPager({
+    required this.page,
+    required this.loading,
+    required this.hasNextPage,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final int page;
+  final bool loading;
+  final bool hasNextPage;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: FilledButton.tonalIcon(
+              icon: const Icon(Icons.navigate_before),
+              label: const Text('上一页'),
+              onPressed: loading ? null : onPrevious,
+            ),
+          ),
+          const SizedBox(width: 12),
+          loading
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text('第 $page 页'),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton.tonalIcon(
+              icon: const Icon(Icons.navigate_next),
+              label: const Text('下一页'),
+              onPressed: loading || !hasNextPage ? null : onNext,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SourceHint extends StatelessWidget {
   const _SourceHint({
     required this.icon,
@@ -309,7 +412,7 @@ class _SourceHint extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           color: colors.secondaryContainer,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(icon, size: 21, color: colors.onSecondaryContainer),
       ),

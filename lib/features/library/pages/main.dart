@@ -38,7 +38,7 @@ class LibraryPage extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(10),
                           gradient: LinearGradient(
                             colors: [
                               Theme.of(context).colorScheme.primaryContainer,

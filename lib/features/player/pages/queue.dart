@@ -257,7 +257,7 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             color: colors.primaryContainer,
-                            borderRadius: BorderRadius.circular(9),
+                            borderRadius: BorderRadius.circular(4),
                             border: Border.all(
                               color: colors.surfaceContainerLowest,
                               width: 2,
@@ -436,9 +436,9 @@ class _SeriesEpisodeTile extends StatelessWidget {
         color: current
             ? colors.primaryContainer.withValues(alpha: .58)
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
           onTap: onPlay,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),

@@ -27,10 +27,15 @@ class SeriesDetailPage extends ConsumerStatefulWidget {
 }
 
 class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
+  static const _episodesPageSize = 10;
+
   bool _subscribing = false;
   bool _checkingSubscription = true;
   bool _subscribed = false;
   bool _loadingEpisodes = false;
+  bool _loadingMoreEpisodes = false;
+  bool _hasMoreEpisodes = false;
+  int _loadedEpisodePages = 0;
   Object? _episodesError;
   late Series _series;
   final Set<String> _downloadedEpisodeIds = {};
@@ -44,6 +49,9 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
     _loadDownloadsState();
     if (widget.series is! BilibiliCollectionSeries) {
       _loadEpisodes();
+    } else {
+      _loadedEpisodePages = widget.series.episodes.isEmpty ? 0 : 1;
+      _hasMoreEpisodes = widget.series.episodes.length > _episodesPageSize;
     }
   }
 
@@ -101,10 +109,14 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
       _episodesError = null;
     });
     try {
-      final series = await ref.read(seriesServiceProvider).load(widget.series);
+      final series = await ref
+          .read(seriesServiceProvider)
+          .load(widget.series, pageSize: _episodesPageSize);
       if (mounted) {
         setState(() {
           _series = series;
+          _loadedEpisodePages = series.episodes.isEmpty ? 0 : 1;
+          _hasMoreEpisodes = _hasNextEpisodePage(series);
           _loadingEpisodes = false;
         });
       }
@@ -126,6 +138,63 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
       if (mounted) {
         setState(() {
           _loadingEpisodes = false;
+          _episodesError = error;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreEpisodes() async {
+    if (_loadingEpisodes || _loadingMoreEpisodes || !_hasMoreEpisodes) return;
+    final series = _series;
+    if (!_usesRemoteEpisodePages(series)) {
+      setState(() {
+        _loadedEpisodePages += 1;
+        _hasMoreEpisodes =
+            series.episodes.length > _loadedEpisodePages * _episodesPageSize;
+      });
+      return;
+    }
+
+    final nextPage = _loadedEpisodePages + 1;
+    setState(() {
+      _loadingMoreEpisodes = true;
+      _episodesError = null;
+    });
+    try {
+      final nextSeries = await ref
+          .read(seriesServiceProvider)
+          .load(series, page: nextPage, pageSize: _episodesPageSize);
+      final loaded = series.copyWith(
+        episodes: _mergeEpisodes(series.episodes, nextSeries.episodes),
+      );
+      if (mounted) {
+        setState(() {
+          _series = loaded;
+          _loadedEpisodePages = nextPage;
+          _hasMoreEpisodes = nextSeries.episodes.length == _episodesPageSize;
+          _loadingMoreEpisodes = false;
+        });
+      }
+      if (await ref.read(libraryRepositoryProvider).isSubscribed(loaded.id)) {
+        await ref.read(libraryRepositoryProvider).subscribe(loaded);
+      }
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'load_more_series_episodes',
+        error,
+        area: 'series',
+        stackTrace: stackTrace,
+        data: {
+          'seriesId': series.id,
+          'title': series.title,
+          'page': nextPage,
+          'pageSize': _episodesPageSize,
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _loadingMoreEpisodes = false;
           _episodesError = error;
         });
       }
@@ -226,7 +295,9 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
   @override
   Widget build(BuildContext context) {
     final series = _series;
-    final episodes = _loadingEpisodes ? const <Episode>[] : series.episodes;
+    final episodes = _loadingEpisodes
+        ? const <Episode>[]
+        : _visibleEpisodes(series);
     final queue = ref.watch(playbackQueueProvider);
     final isQueued = queue.items.any((item) => item.id == series.id);
     final isCreatorSeries = series is BilibiliCreatorSeries;
@@ -267,7 +338,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                                 Text(
                                   _loadingEpisodes
                                       ? '加载中'
-                                      : '${episodes.length} 集',
+                                      : _episodeCountText(series, episodes),
                                 ),
                               ],
                             ),
@@ -298,7 +369,9 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                                     );
                                     ref
                                         .read(playbackQueueProvider.notifier)
-                                        .addSeries(series);
+                                        .addSeries(
+                                          series.copyWith(episodes: episodes),
+                                        );
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(content: Text('已加入播放列表')),
                                     );
@@ -336,7 +409,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                         title: '单集',
                         subtitle: _loadingEpisodes
                             ? '正在加载'
-                            : '共 ${episodes.length} 集',
+                            : _episodeSectionSubtitle(series, episodes),
                       ),
                       const SizedBox(height: 10),
                       if (_loadingEpisodes)
@@ -457,6 +530,25 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                           ],
                         );
                       }),
+                      if (!_loadingEpisodes && _hasMoreEpisodes) ...[
+                        const SizedBox(height: 12),
+                        Center(
+                          child: FilledButton.tonalIcon(
+                            icon: _loadingMoreEpisodes
+                                ? const SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.navigate_next),
+                            label: const Text('下一页'),
+                            onPressed: _loadingMoreEpisodes
+                                ? null
+                                : _loadMoreEpisodes,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -479,6 +571,39 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
     return parts.join(' · ');
   }
 
+  List<Episode> _visibleEpisodes(Series series) {
+    if (_usesRemoteEpisodePages(series)) return series.episodes;
+    final count = _loadedEpisodePages * _episodesPageSize;
+    if (count <= 0 || series.episodes.length <= count) return series.episodes;
+    return series.episodes.take(count).toList();
+  }
+
+  bool _hasNextEpisodePage(Series series) {
+    if (_usesRemoteEpisodePages(series)) {
+      return series.episodes.length == _episodesPageSize;
+    }
+    return series.episodes.length > _episodesPageSize;
+  }
+
+  bool _usesRemoteEpisodePages(Series series) {
+    return series is BilibiliCreatorSeries;
+  }
+
+  List<Episode> _mergeEpisodes(List<Episode> current, List<Episode> incoming) {
+    final seen = current.map((episode) => episode.id).toSet();
+    return [...current, ...incoming.where((episode) => seen.add(episode.id))];
+  }
+
+  String _episodeCountText(Series series, List<Episode> episodes) {
+    if (_usesRemoteEpisodePages(series)) return '已加载 ${episodes.length} 集';
+    return '${episodes.length} / ${series.episodes.length} 集';
+  }
+
+  String _episodeSectionSubtitle(Series series, List<Episode> episodes) {
+    if (_usesRemoteEpisodePages(series)) return '已加载 ${episodes.length} 集';
+    return '已显示 ${episodes.length} / ${series.episodes.length} 集';
+  }
+
   String _subscriptionTooltip() {
     if (_checkingSubscription) return '检查中';
     if (_subscribing) return '订阅中';
@@ -495,7 +620,7 @@ class _SeriesCover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = circular ? 54.0 : 16.0;
+    final radius = circular ? 54.0 : 8.0;
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: SizedBox.square(

@@ -15,15 +15,23 @@ class BilibiliRepository {
 
   final BilibiliClient _client;
 
-  Future<List<SearchResult>> search(String keyword) async {
+  Future<List<SearchResult>> search(
+    String keyword, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     if (keyword.trim().isEmpty) return const [];
     AppLogger.result(
       'search',
       area: 'bilibili',
       message: 'start',
-      data: {'keyword': keyword.trim()},
+      data: {'keyword': keyword.trim(), 'page': page, 'pageSize': pageSize},
     );
-    final rows = await _client.searchVideos(keyword.trim());
+    final rows = await _client.searchVideos(
+      keyword.trim(),
+      page: page,
+      pageSize: pageSize,
+    );
     final results = rows.map(_searchResultFromJson).toList();
     final missingBvidCount = results
         .where((result) => result.bvid == null)
@@ -33,6 +41,8 @@ class BilibiliRepository {
       area: 'bilibili',
       data: {
         'keyword': keyword.trim(),
+        'page': page,
+        'pageSize': pageSize,
         'count': results.length,
         'missingBvidCount': missingBvidCount,
       },
@@ -141,16 +151,26 @@ class BilibiliRepository {
     );
   }
 
-  Future<Series> loadCreatorSeries(BilibiliCreatorSeries series) async {
+  Future<Series> loadCreatorSeries(
+    BilibiliCreatorSeries series, {
+    int page = 1,
+    int pageSize = 10,
+  }) async {
     final mid = _midFromCreatorSeriesId(series.id);
     if (mid == null) return series;
     AppLogger.result(
       'load_creator_series',
       area: 'bilibili',
       message: 'start',
-      data: {'seriesId': series.id, 'mid': mid, 'title': series.title},
+      data: {
+        'seriesId': series.id,
+        'mid': mid,
+        'title': series.title,
+        'page': page,
+        'pageSize': pageSize,
+      },
     );
-    final rows = await _client.ownerVideos(mid);
+    final rows = await _client.ownerVideos(mid, page: page, pageSize: pageSize);
     final episodes = <Episode>[];
     for (final row in rows) {
       final bvid = _normalizeBvid(row['bvid'] as String?);
@@ -174,6 +194,8 @@ class BilibiliRepository {
       data: {
         'seriesId': loaded.id,
         'mid': mid,
+        'page': page,
+        'pageSize': pageSize,
         'episodeCount': loaded.episodes.length,
       },
     );

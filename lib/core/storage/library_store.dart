@@ -47,12 +47,16 @@ class LibraryStore {
 
   Future<List<Episode>> loadHistory() async {
     final data = await _loadHistory();
-    return _decodeList(data['history']).map(Episode.fromJson).toList();
+    return _decodeList(
+      data['history'],
+    ).map(Episode.tryFromJson).whereType<Episode>().toList();
   }
 
   Future<void> addHistory(Episode episode) async {
     final data = await _loadHistory();
-    final history = _decodeList(data['history']).map(Episode.fromJson).toList();
+    final history = _decodeList(
+      data['history'],
+    ).map(Episode.tryFromJson).whereType<Episode>().toList();
     final next = [
       episode,
       ...history.where((item) => item.id != episode.id),
@@ -63,16 +67,18 @@ class LibraryStore {
 
   Future<List<DownloadedEpisode>> loadDownloadedEpisodes() async {
     final data = await _loadDownloads();
-    return _decodeList(
-      data['episodes'],
-    ).map(DownloadedEpisode.fromJson).toList();
+    return _decodeList(data['episodes'])
+        .map(DownloadedEpisode.tryFromJson)
+        .whereType<DownloadedEpisode>()
+        .toList();
   }
 
   Future<void> saveDownloadedEpisode(DownloadedEpisode downloaded) async {
     final data = await _loadDownloads();
-    final episodes = _decodeList(
-      data['episodes'],
-    ).map(DownloadedEpisode.fromJson).toList();
+    final episodes = _decodeList(data['episodes'])
+        .map(DownloadedEpisode.tryFromJson)
+        .whereType<DownloadedEpisode>()
+        .toList();
     final next = [
       downloaded,
       ...episodes.where((item) => item.episode.id != downloaded.episode.id),
@@ -84,7 +90,8 @@ class LibraryStore {
   Future<void> removeDownloadedEpisode(String episodeId) async {
     final data = await _loadDownloads();
     final episodes = _decodeList(data['episodes'])
-        .map(DownloadedEpisode.fromJson)
+        .map(DownloadedEpisode.tryFromJson)
+        .whereType<DownloadedEpisode>()
         .where((item) => item.episode.id != episodeId)
         .toList();
     data['episodes'] = episodes.map((item) => item.toJson()).toList();

@@ -20,16 +20,32 @@ class DownloadedEpisode {
     'downloadedAt': downloadedAt.toIso8601String(),
   };
 
-  factory DownloadedEpisode.fromJson(Map<String, Object?> json) {
-    return DownloadedEpisode(
-      episode: Episode.fromJson(
-        (json['episode'] as Map).cast<String, Object?>(),
-      ),
-      filePath: json['filePath'] as String,
-      bytes: json['bytes'] as int,
-      downloadedAt:
-          DateTime.tryParse(json['downloadedAt'] as String? ?? '') ??
-          DateTime.fromMillisecondsSinceEpoch(0),
+  static DownloadedEpisode? tryFromJson(Map<String, Object?> json) {
+    final episodeJson = json['episode'];
+    if (episodeJson is! Map) return null;
+    final episode = Episode.tryFromJson(episodeJson.cast<String, Object?>());
+    if (episode == null) return null;
+    final filePath = json['filePath'];
+    final bytes = json['bytes'];
+    final downloadedAt = DateTime.tryParse(
+      json['downloadedAt'] as String? ?? '',
     );
+    if (filePath is! String || bytes is! num || downloadedAt == null) {
+      return null;
+    }
+    return DownloadedEpisode(
+      episode: episode,
+      filePath: filePath,
+      bytes: bytes.toInt(),
+      downloadedAt: downloadedAt,
+    );
+  }
+
+  factory DownloadedEpisode.fromJson(Map<String, Object?> json) {
+    final downloaded = tryFromJson(json);
+    if (downloaded == null) {
+      throw FormatException('Invalid downloaded episode JSON');
+    }
+    return downloaded;
   }
 }

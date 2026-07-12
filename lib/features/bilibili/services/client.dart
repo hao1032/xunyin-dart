@@ -19,20 +19,24 @@ class BilibiliClient {
   static Future<String>? _wbiMixinKeyFuture;
   static Future<Map<String, String>>? _buvidCookiesFuture;
 
-  Future<List<Map<String, dynamic>>> searchVideos(String keyword) async {
+  Future<List<Map<String, dynamic>>> searchVideos(
+    String keyword, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     AppLogger.result(
       'request_search_videos',
       area: 'bilibili',
       message: 'request',
-      data: {'keyword': keyword},
+      data: {'keyword': keyword, 'page': page, 'pageSize': pageSize},
     );
     final response = await _get(
       'https://api.bilibili.com/x/web-interface/wbi/search/type',
       queryParameters: {
         'search_type': 'video',
         'keyword': keyword,
-        'page': 1,
-        'page_size': 42,
+        'page': page,
+        'page_size': pageSize,
         'duration': 0,
       },
       includeCookies: false,
@@ -120,13 +124,19 @@ class BilibiliClient {
 
   Future<List<Map<String, dynamic>>> ownerVideos(
     int mid, {
+    int page = 1,
     int pageSize = 30,
   }) async {
     AppLogger.result(
       'request_owner_videos',
       area: 'bilibili',
       message: 'request',
-      data: {'mid': mid, 'pageSize': pageSize, 'strategy': 'wbi_only'},
+      data: {
+        'mid': mid,
+        'page': page,
+        'pageSize': pageSize,
+        'strategy': 'wbi_only',
+      },
     );
     late final Map<String, dynamic> response;
     try {
@@ -134,7 +144,7 @@ class BilibiliClient {
       final signedQuery = await _signedWbiQuery({
         'mid': mid,
         'tid': 0,
-        'pn': 1,
+        'pn': page,
         'ps': pageSize,
         'keyword': '',
         'order': 'pubdate',

@@ -23,7 +23,7 @@ class ApplePodcastClient {
       'search',
       area: 'apple_podcast',
       message: 'request',
-      data: {'keyword': keyword.trim()},
+      data: {'keyword': keyword.trim(), 'limit': 200},
     );
     final response = await _dio.get<Object?>(
       'https://itunes.apple.com/search',
@@ -31,7 +31,7 @@ class ApplePodcastClient {
         'media': 'podcast',
         'entity': 'podcastEpisode',
         'term': keyword.trim(),
-        'limit': 25,
+        'limit': 200,
       },
       options: Options(responseType: ResponseType.plain),
     );
@@ -77,7 +77,7 @@ class ApplePodcastClient {
     AppLogger.result(
       'search',
       area: 'apple_podcast',
-      data: {'keyword': keyword.trim(), 'count': mapped.length},
+      data: {'keyword': keyword.trim(), 'limit': 200, 'count': mapped.length},
     );
     return mapped;
   }

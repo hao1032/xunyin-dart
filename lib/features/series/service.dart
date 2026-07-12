@@ -18,9 +18,13 @@ class SeriesService {
   final BilibiliRepository _bilibili;
   final PodcastRepository _podcast;
 
-  Future<Series> load(Series series) {
+  Future<Series> load(Series series, {int page = 1, int pageSize = 10}) {
     return switch (series) {
-      BilibiliCreatorSeries() => _bilibili.loadCreatorSeries(series),
+      BilibiliCreatorSeries() => _bilibili.loadCreatorSeries(
+        series,
+        page: page,
+        pageSize: pageSize,
+      ),
       RssPodcastSeries() => _loadRss(series),
       BilibiliCollectionSeries() => Future.value(series),
     };

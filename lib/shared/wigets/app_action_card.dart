@@ -27,7 +27,7 @@ class AppActionCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Padding(
           padding: contentPadding,
@@ -38,9 +38,12 @@ class AppActionCard extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: iconBackgroundColor ?? colors.secondaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                child: Icon(icon, color: iconColor ?? colors.onSecondaryContainer),
+                child: Icon(
+                  icon,
+                  color: iconColor ?? colors.onSecondaryContainer,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(

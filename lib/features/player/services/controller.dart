@@ -55,6 +55,7 @@ class PlaybackController {
   Timer? _positionTimer;
   Episode? _currentEpisode;
   String? _preparingEpisodeId;
+  String? _advancingFromCompletedEpisodeId;
   Duration? _lastSavedPosition;
 
   AudioPlayer get player => _player;
@@ -212,14 +213,53 @@ class PlaybackController {
     if (_currentEpisode == null) return;
     if (state.processingState == ProcessingState.completed) {
       final episode = _currentEpisode!;
+      if (_advancingFromCompletedEpisodeId == episode.id) return;
+      _advancingFromCompletedEpisodeId = episode.id;
       _positionTimer?.cancel();
       _positionTimer = null;
       _lastSavedPosition = null;
-      unawaited(_library.clearPlaybackPosition(episode));
+      unawaited(_handleCompletedEpisode(episode));
       return;
     }
     if (!state.playing) {
       unawaited(_saveCurrentPosition(reason: 'pause'));
+    }
+  }
+
+  Future<void> _handleCompletedEpisode(Episode episode) async {
+    try {
+      await _library.clearPlaybackPosition(episode);
+      final nextEpisode = _queue?.playNextAfter(episode);
+      if (nextEpisode == null) {
+        AppLogger.result(
+          'auto_play_next_missing',
+          area: 'player',
+          data: {'episodeId': episode.id, 'title': episode.title},
+        );
+        return;
+      }
+      AppLogger.result(
+        'auto_play_next',
+        area: 'player',
+        data: {
+          'fromEpisodeId': episode.id,
+          'episodeId': nextEpisode.id,
+          'title': nextEpisode.title,
+        },
+      );
+      await play(nextEpisode);
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'auto_play_next',
+        error,
+        area: 'player',
+        stackTrace: stackTrace,
+        data: {'episodeId': episode.id, 'title': episode.title},
+      );
+    } finally {
+      if (_advancingFromCompletedEpisodeId == episode.id) {
+        _advancingFromCompletedEpisodeId = null;
+      }
     }
   }
 

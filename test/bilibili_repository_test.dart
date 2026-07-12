@@ -193,11 +193,16 @@ class _FakeBilibiliClient extends BilibiliClient {
   final List<Map<String, dynamic>> rows;
 
   @override
-  Future<List<Map<String, dynamic>>> searchVideos(String keyword) async => rows;
+  Future<List<Map<String, dynamic>>> searchVideos(
+    String keyword, {
+    int page = 1,
+    int pageSize = 20,
+  }) async => rows;
 
   @override
   Future<List<Map<String, dynamic>>> ownerVideos(
     int mid, {
+    int page = 1,
     int pageSize = 30,
   }) async => rows;
 

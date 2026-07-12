@@ -54,7 +54,7 @@ abstract final class AppTheme {
         margin: EdgeInsets.zero,
         color: colors.surfaceContainerLowest,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           side: BorderSide(color: colors.outlineVariant.withValues(alpha: .65)),
         ),
       ),
@@ -63,15 +63,15 @@ abstract final class AppTheme {
         fillColor: colors.surfaceContainer,
         border: OutlineInputBorder(
           borderSide: BorderSide.none,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
         ),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide.none,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
         ),
         focusedBorder: OutlineInputBorder(
           borderSide: BorderSide(color: colors.primary, width: 1.5),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,
@@ -95,9 +95,7 @@ abstract final class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(48, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       iconButtonTheme: IconButtonThemeData(
@@ -113,7 +111,7 @@ abstract final class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }

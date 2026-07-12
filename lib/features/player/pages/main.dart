@@ -54,7 +54,7 @@ class PlayerPage extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(10),
                         child: AspectRatio(
                           aspectRatio: 1,
                           child: episode.imageUrl == null

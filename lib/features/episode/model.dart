@@ -65,28 +65,60 @@ class Episode {
     'page': page,
   };
 
-  factory Episode.fromJson(Map<String, Object?> json) {
+  static Episode? tryFromJson(Map<String, Object?> json) {
+    final id = json['id'];
+    final seriesId = json['seriesId'];
+    final title = json['title'];
+    final sourceTypeName = json['sourceType'];
+    final originalUrl = json['originalUrl'];
+    if (id is! String ||
+        seriesId is! String ||
+        title is! String ||
+        sourceTypeName is! String ||
+        originalUrl is! String) {
+      return null;
+    }
+
+    final sourceType = SourceType.values
+        .where((item) => item.name == sourceTypeName)
+        .firstOrNull;
+    if (sourceType == null) return null;
+
+    final duration = json['duration'];
+    final publishedAt = json['publishedAt'];
+    final aid = json['aid'];
+    final cid = json['cid'];
+    final page = json['page'];
+
     return Episode(
-      id: json['id'] as String,
-      seriesId: json['seriesId'] as String,
-      title: json['title'] as String,
-      sourceType: SourceType.values.byName(json['sourceType'] as String),
-      originalUrl: json['originalUrl'] as String,
+      id: id,
+      seriesId: seriesId,
+      title: title,
+      sourceType: sourceType,
+      originalUrl: originalUrl,
       description: json['description'] as String?,
       author: json['author'] as String?,
       imageUrl: json['imageUrl'] as String?,
       mediaUrl: json['mediaUrl'] as String?,
-      duration: json['duration'] == null
-          ? null
-          : Duration(milliseconds: json['duration'] as int),
-      publishedAt: json['publishedAt'] == null
-          ? null
-          : DateTime.tryParse(json['publishedAt'] as String),
+      duration: duration is num
+          ? Duration(milliseconds: duration.toInt())
+          : null,
+      publishedAt: publishedAt is String
+          ? DateTime.tryParse(publishedAt)
+          : null,
       bvid: json['bvid'] as String?,
-      aid: json['aid'] as int?,
-      cid: json['cid'] as int?,
-      page: json['page'] as int?,
+      aid: aid is num ? aid.toInt() : null,
+      cid: cid is num ? cid.toInt() : null,
+      page: page is num ? page.toInt() : null,
     );
+  }
+
+  factory Episode.fromJson(Map<String, Object?> json) {
+    final episode = tryFromJson(json);
+    if (episode == null) {
+      throw FormatException('Invalid episode JSON');
+    }
+    return episode;
   }
 }
 

@@ -27,6 +27,40 @@ class PlaybackQueueState {
       items: items ?? this.items,
     );
   }
+
+  ({Episode? episode, PlaybackQueueState state}) advanceAfter(Episode episode) {
+    final entryIndex = items.indexWhere(
+      (item) => item.containsEpisode(episode.id),
+    );
+    if (entryIndex < 0) return (episode: null, state: this);
+
+    final entry = items[entryIndex];
+    final episodeIndex = entry.episodes.indexWhere(
+      (item) => item.id == episode.id,
+    );
+
+    Episode? nextEpisode;
+    var nextEntryIndex = entryIndex;
+    if (entry.type == PlaybackQueueEntryType.series &&
+        episodeIndex >= 0 &&
+        episodeIndex + 1 < entry.episodes.length) {
+      nextEpisode = entry.episodes[episodeIndex + 1];
+    } else if (entryIndex + 1 < items.length) {
+      nextEntryIndex = entryIndex + 1;
+      nextEpisode = items[nextEntryIndex].playableEpisode;
+    }
+
+    if (nextEpisode == null) return (episode: null, state: this);
+
+    final nextItems = [...items];
+    nextItems[nextEntryIndex] = nextItems[nextEntryIndex].markPlayed(
+      nextEpisode.id,
+    );
+    return (
+      episode: nextEpisode,
+      state: PlaybackQueueState(current: nextEpisode, items: nextItems),
+    );
+  }
 }
 
 class PlaybackQueueController extends Notifier<PlaybackQueueState> {
@@ -134,6 +168,32 @@ class PlaybackQueueController extends Notifier<PlaybackQueueState> {
     state = const PlaybackQueueState();
     _persist();
     AppLogger.result('queue_clear', area: 'player');
+  }
+
+  Episode? playNextAfter(Episode episode) {
+    final advance = state.advanceAfter(episode);
+    final nextEpisode = advance.episode;
+    if (nextEpisode == null) {
+      AppLogger.result(
+        'queue_advance_next_missing',
+        area: 'player',
+        data: {'episodeId': episode.id, 'queueCount': state.items.length},
+      );
+      return null;
+    }
+    state = advance.state;
+    _persist();
+    AppLogger.result(
+      'queue_advance_next',
+      area: 'player',
+      data: {
+        'fromEpisodeId': episode.id,
+        'episodeId': nextEpisode.id,
+        'title': nextEpisode.title,
+        'queueCount': state.items.length,
+      },
+    );
+    return nextEpisode;
   }
 
   Future<void> _restore() async {
@@ -273,7 +333,8 @@ class PlaybackQueueEntry {
     if (type == null) return null;
     final episodes = (json['episodes'] as List<dynamic>? ?? const [])
         .whereType<Map>()
-        .map((item) => Episode.fromJson(item.cast()))
+        .map((item) => Episode.tryFromJson(item.cast()))
+        .whereType<Episode>()
         .toList();
     if (episodes.isEmpty) return null;
     return PlaybackQueueEntry._(
