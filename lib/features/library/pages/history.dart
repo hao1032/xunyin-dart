@@ -92,12 +92,12 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                     return AppListItem(
                       coverUrl: episode.imageUrl,
                       title: episode.title,
+                      subtitle: episode.author ?? episode.sourceType.label,
                       metadata: [
                         if (episode.publishedAt != null)
                           formatRelativeDate(episode.publishedAt!),
                         if (episode.duration != null)
                           formatDuration(episode.duration!),
-                        episode.author ?? episode.sourceType.label,
                       ].join(' · '),
                       onTap: () {
                         AppLogger.userAction(

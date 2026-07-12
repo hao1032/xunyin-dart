@@ -57,6 +57,24 @@ void main() {
     expect(advance.episode, isNull);
     expect(advance.state, same(state));
   });
+
+  test('preserves series metadata through json roundtrip', () {
+    final episode = _episode('series-1-1', seriesId: 'series-1');
+    final series = BilibiliCreatorSeries(
+      id: 'bili-up-42',
+      title: 'Alice',
+      originalUrl: 'https://space.bilibili.com/42',
+      episodes: [episode],
+    );
+    final entry = PlaybackQueueEntry.series(series);
+
+    final restored = PlaybackQueueEntry.fromJson(entry.toJson());
+
+    expect(restored, isNotNull);
+    expect(restored!.series, isA<BilibiliCreatorSeries>());
+    expect(restored.series!.id, series.id);
+    expect(restored.series!.title, series.title);
+  });
 }
 
 Episode _episode(String id, {String seriesId = 'series'}) {

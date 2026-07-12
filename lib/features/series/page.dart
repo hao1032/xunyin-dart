@@ -6,6 +6,7 @@ import '../../core/app_logger.dart';
 import '../../core/display_formatters.dart';
 import '../../core/plain_text.dart';
 import '../../core/app_layout.dart';
+import '../../shared/wigets/cached_cover_image.dart';
 import '../../shared/wigets/app_list_item.dart';
 import '../downloads/repository.dart';
 import '../library/repository.dart';
@@ -350,32 +351,39 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          IconButton(
-                            tooltip: isQueued ? '已加入播放列表' : '加入播放列表',
-                            icon: Icon(
-                              isQueued ? Icons.check : Icons.playlist_add,
+                          Tooltip(
+                            message: isQueued ? '已加入播放列表' : '加入播放列表',
+                            child: FilledButton.tonalIcon(
+                              icon: Icon(
+                                isQueued ? Icons.check : Icons.playlist_add,
+                              ),
+                              label: Text(isQueued ? '已加入' : '加入列表'),
+                              onPressed: episodes.isEmpty || isQueued
+                                  ? null
+                                  : () {
+                                      AppLogger.userAction(
+                                        'add_series_to_queue',
+                                        area: 'player',
+                                        data: {
+                                          'seriesId': series.id,
+                                          'title': series.title,
+                                          'episodeCount': episodes.length,
+                                        },
+                                      );
+                                      ref
+                                          .read(playbackQueueProvider.notifier)
+                                          .addSeries(
+                                            series.copyWith(episodes: episodes),
+                                          );
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('已加入播放列表'),
+                                        ),
+                                      );
+                                    },
                             ),
-                            onPressed: episodes.isEmpty || isQueued
-                                ? null
-                                : () {
-                                    AppLogger.userAction(
-                                      'add_series_to_queue',
-                                      area: 'player',
-                                      data: {
-                                        'seriesId': series.id,
-                                        'title': series.title,
-                                        'episodeCount': episodes.length,
-                                      },
-                                    );
-                                    ref
-                                        .read(playbackQueueProvider.notifier)
-                                        .addSeries(
-                                          series.copyWith(episodes: episodes),
-                                        );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('已加入播放列表')),
-                                    );
-                                  },
                           ),
                           FilledButton.tonalIcon(
                             icon: _checkingSubscription || _subscribing
@@ -439,10 +447,10 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                         final busy = _busyEpisodeIds.contains(episode.id);
                         return AppListItem(
                           coverUrl: episode.imageUrl,
-                          coverSize: 64,
                           placeholderIcon: Icons.music_note,
                           title: episode.title,
-                          metadata: _episodeSubtitle(episode) ?? '',
+                          subtitle: _episodeSubtitle(episode),
+                          metadata: _episodeMetadata(episode),
                           onTap: () {
                             AppLogger.userAction(
                               'open_episode',
@@ -562,12 +570,14 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
   }
 
   String? _episodeSubtitle(Episode episode) {
+    return episode.author ?? episode.sourceType.label;
+  }
+
+  String _episodeMetadata(Episode episode) {
     final parts = <String>[
       if (episode.publishedAt != null) formatRelativeDate(episode.publishedAt!),
       if (episode.duration != null) formatDuration(episode.duration!),
-      if (episode.author != null && episode.author!.isNotEmpty) episode.author!,
     ];
-    if (parts.isEmpty) return null;
     return parts.join(' · ');
   }
 
@@ -625,12 +635,13 @@ class _SeriesCover extends StatelessWidget {
       borderRadius: BorderRadius.circular(radius),
       child: SizedBox.square(
         dimension: 108,
-        child: url == null
-            ? ColoredBox(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: Icon(circular ? Icons.person : Icons.podcasts, size: 40),
-              )
-            : Image.network(url!, fit: BoxFit.cover),
+        child: CachedCoverImage(
+          url: url,
+          placeholderBuilder: (context) => ColoredBox(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Icon(circular ? Icons.person : Icons.podcasts, size: 40),
+          ),
+        ),
       ),
     );
   }

@@ -16,6 +16,7 @@ void main() {
             <title>Episode 1</title>
             <guid>ep-1</guid>
             <link>https://example.com/ep-1</link>
+            <pubDate>Tue, 09 Jul 2024 10:30:00 +0000</pubDate>
             <enclosure url="https://example.com/ep-1.mp3" />
             <itunes:duration>01:02:03</itunes:duration>
           </item>
@@ -28,6 +29,11 @@ void main() {
     expect(series, isA<RssPodcastSeries>());
     expect(series.episodes, hasLength(1));
     expect(series.episodes.single.mediaUrl, 'https://example.com/ep-1.mp3');
+    expect(series.episodes.single.publishedAt, isNotNull);
+    expect(
+      series.episodes.single.publishedAt!.toUtc(),
+      DateTime.utc(2024, 7, 9, 10, 30),
+    );
     expect(
       series.episodes.single.duration,
       const Duration(hours: 1, minutes: 2, seconds: 3),

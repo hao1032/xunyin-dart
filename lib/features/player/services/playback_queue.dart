@@ -147,6 +147,25 @@ class PlaybackQueueController extends Notifier<PlaybackQueueState> {
     );
   }
 
+  void updateSeries(Series series) {
+    final index = state.items.indexWhere((item) => item.id == series.id);
+    if (index < 0) return;
+    final items = [...state.items];
+    items[index] = items[index].updateSeries(series);
+    state = state.copyWith(items: items);
+    _persist();
+    AppLogger.result(
+      'queue_update_series',
+      area: 'player',
+      data: {
+        'seriesId': series.id,
+        'title': series.title,
+        'episodeCount': series.episodes.length,
+        'queueCount': items.length,
+      },
+    );
+  }
+
   void remove(String entryId) {
     final removed = state.items.where((item) => item.id == entryId).toList();
     final removedCurrent = removed.any(
@@ -259,6 +278,7 @@ class PlaybackQueueEntry {
     required this.episodes,
     this.subtitle,
     this.lastPlayedEpisodeId,
+    this.series,
   });
 
   factory PlaybackQueueEntry.episode(Episode episode) {
@@ -278,6 +298,7 @@ class PlaybackQueueEntry {
       subtitle: '${series.episodes.length} 集 · ${series.label}',
       type: PlaybackQueueEntryType.series,
       episodes: series.episodes,
+      series: series,
     );
   }
 
@@ -287,6 +308,7 @@ class PlaybackQueueEntry {
   final String? lastPlayedEpisodeId;
   final PlaybackQueueEntryType type;
   final List<Episode> episodes;
+  final Series? series;
 
   bool containsEpisode(String episodeId) {
     return episodes.any((episode) => episode.id == episodeId);
@@ -312,6 +334,19 @@ class PlaybackQueueEntry {
       type: type,
       episodes: episodes,
       lastPlayedEpisodeId: episodeId,
+      series: series,
+    );
+  }
+
+  PlaybackQueueEntry updateSeries(Series series) {
+    return PlaybackQueueEntry._(
+      id: series.id,
+      title: series.title,
+      subtitle: '${series.episodes.length} 集 · ${series.label}',
+      type: PlaybackQueueEntryType.series,
+      episodes: series.episodes,
+      lastPlayedEpisodeId: lastPlayedEpisodeId,
+      series: series,
     );
   }
 
@@ -322,6 +357,7 @@ class PlaybackQueueEntry {
       'subtitle': subtitle,
       'type': type.name,
       'lastPlayedEpisodeId': lastPlayedEpisodeId,
+      'series': series?.toJson(),
       'episodes': episodes.map((episode) => episode.toJson()).toList(),
     };
   }
@@ -337,13 +373,26 @@ class PlaybackQueueEntry {
         .whereType<Episode>()
         .toList();
     if (episodes.isEmpty) return null;
+    final seriesJson = json['series'];
+    final series = seriesJson is Map
+        ? _seriesFromJson(seriesJson.cast<String, Object?>())
+        : null;
     return PlaybackQueueEntry._(
-      id: json['id'] as String? ?? episodes.first.id,
-      title: json['title'] as String? ?? episodes.first.title,
+      id: series?.id ?? json['id'] as String? ?? episodes.first.id,
+      title: series?.title ?? json['title'] as String? ?? episodes.first.title,
       subtitle: json['subtitle'] as String?,
       type: type,
-      episodes: episodes,
+      episodes: series?.episodes ?? episodes,
       lastPlayedEpisodeId: json['lastPlayedEpisodeId'] as String?,
+      series: series,
     );
+  }
+
+  static Series? _seriesFromJson(Map<String, Object?> json) {
+    try {
+      return Series.fromJson(json);
+    } on Object {
+      return null;
+    }
   }
 }

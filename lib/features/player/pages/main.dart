@@ -6,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../../core/app_logger.dart';
 import '../../../core/display_formatters.dart';
 import '../../../core/app_layout.dart';
+import '../../../shared/wigets/cached_cover_image.dart';
 import '../../episode/model.dart';
 import '../../episode/series_resolver.dart';
 import '../../series/model.dart';
@@ -57,24 +58,20 @@ class PlayerPage extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(10),
                         child: AspectRatio(
                           aspectRatio: 1,
-                          child: episode.imageUrl == null
-                              ? ColoredBox(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHighest,
-                                  child: const Icon(Icons.podcasts, size: 72),
-                                )
-                              : Image.network(
-                                  episode.imageUrl!,
-                                  fit: BoxFit.cover,
-                                ),
+                          child: CachedCoverImage(
+                            url: episode.imageUrl,
+                            placeholderBuilder: (context) => ColoredBox(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              child: const Icon(Icons.podcasts, size: 72),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 28),
                       Text(
                         episode.title,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
@@ -109,9 +106,6 @@ class PlayerPage extends ConsumerWidget {
                               IconButton.filled(
                                 tooltip: playing ? '暂停' : '播放',
                                 iconSize: 38,
-                                style: IconButton.styleFrom(
-                                  minimumSize: const Size.square(68),
-                                ),
                                 icon: Icon(
                                   playing ? Icons.pause : Icons.play_arrow,
                                 ),
@@ -214,7 +208,7 @@ class _PodcastLink extends StatelessWidget {
     return Center(
       child: TextButton.icon(
         icon: const Icon(Icons.podcasts, size: 18),
-        label: Text('播客：$name', maxLines: 1, overflow: TextOverflow.ellipsis),
+        label: Text('播客：$name'),
         onPressed: onTap,
       ),
     );

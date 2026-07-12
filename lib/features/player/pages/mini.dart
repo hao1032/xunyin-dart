@@ -5,6 +5,7 @@ import 'package:just_audio/just_audio.dart';
 
 import '../../../core/app_logger.dart';
 import '../../../core/display_formatters.dart';
+import '../../../shared/wigets/cached_cover_image.dart';
 import '../services/playback_queue.dart';
 import '../services/controller.dart';
 
@@ -46,8 +47,8 @@ class MiniPlayer extends ConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
-                        height: 62,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 62),
                         child: Row(
                           children: [
                             const SizedBox(width: 8),
@@ -60,8 +61,6 @@ class MiniPlayer extends ConsumerWidget {
                                 children: [
                                   Text(
                                     current.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -113,16 +112,14 @@ class _MiniCover extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox.square(
       dimension: 46,
-      child: url == null
-          ? ColoredBox(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              child: const Icon(Icons.graphic_eq_rounded),
-            )
-          : Image.network(
-              url!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const Icon(Icons.graphic_eq_rounded),
-            ),
+      child: CachedCoverImage(
+        url: url,
+        placeholderBuilder: (context) => ColoredBox(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: const Icon(Icons.graphic_eq_rounded),
+        ),
+        errorBuilder: (_) => const Icon(Icons.graphic_eq_rounded),
+      ),
     );
   }
 }

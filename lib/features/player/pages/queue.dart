@@ -7,6 +7,8 @@ import '../../../core/display_formatters.dart';
 import '../../../core/app_layout.dart';
 import '../../../shared/wigets/app_list_item.dart';
 import '../../episode/model.dart';
+import '../../series/model.dart';
+import '../../series/service.dart';
 import '../services/playback_queue.dart';
 import '../services/controller.dart';
 import 'mini.dart';
@@ -21,7 +23,11 @@ class QueuePage extends ConsumerStatefulWidget {
 }
 
 class _QueuePageState extends ConsumerState<QueuePage> {
+  static const _seriesPageSize = 10;
+
   String? _playingRequestEpisodeId;
+  final Set<String> _loadingMoreSeriesIds = {};
+  final Map<String, bool> _seriesHasMore = {};
 
   @override
   Widget build(BuildContext context) {
@@ -63,9 +69,9 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                 return queue.items.isEmpty
                     ? const _EmptyQueue()
                     : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
                         itemCount: queue.items.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        separatorBuilder: (_, _) => const SizedBox(height: 4),
                         itemBuilder: (context, index) {
                           final entry = queue.items[index];
                           final selected =
@@ -80,6 +86,10 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                               loading: itemLoading,
                               busyEpisodeId: _playingRequestEpisodeId,
                               currentEpisodeId: queue.current?.id,
+                              canLoadMore: _canLoadMoreSeries(entry),
+                              loadingMore: _loadingMoreSeriesIds.contains(
+                                entry.id,
+                              ),
                               onPlayEpisode: (episode, childIndex) =>
                                   _playEpisode(
                                     context,
@@ -87,16 +97,18 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                                     index: index,
                                     childIndex: childIndex,
                                   ),
+                              onLoadMore: () => _loadMoreSeries(entry),
                             );
                           }
                           final episode = entry.episodes.first;
                           return AppListItem(
                             coverUrl: episode.imageUrl,
                             title: entry.title,
-                            metadata: _queueSubtitle(
+                            subtitle: _queueSubtitle(
                               episode,
                               fallback: entry.subtitle,
                             ),
+                            compact: true,
                             onTap: () =>
                                 _playEpisode(context, episode, index: index),
                             actions: [
@@ -128,11 +140,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
   }
 
   String _queueSubtitle(Episode episode, {String? fallback}) {
-    final parts = <String>[
-      if (episode.duration != null) formatDuration(episode.duration!),
-      fallback ?? episode.author ?? episode.sourceType.label,
-    ];
-    return parts.join(' · ');
+    return fallback ?? episode.author ?? episode.sourceType.label;
   }
 
   Future<void> _playEpisode(
@@ -174,6 +182,91 @@ class _QueuePageState extends ConsumerState<QueuePage> {
       }
     }
   }
+
+  bool _canLoadMoreSeries(PlaybackQueueEntry entry) {
+    final series = _seriesForLoading(entry);
+    if (series == null || entry.episodes.isEmpty) return false;
+    final known = _seriesHasMore[entry.id];
+    if (known != null) return known;
+    return entry.episodes.length % _seriesPageSize == 0;
+  }
+
+  Series? _seriesForLoading(PlaybackQueueEntry entry) {
+    final series = entry.series;
+    if (series is BilibiliCreatorSeries) return series;
+    if (series != null) return null;
+    if (!entry.id.startsWith('bili-up-')) return null;
+    return BilibiliCreatorSeries(
+      id: entry.id,
+      title: entry.title,
+      originalUrl: '',
+      episodes: entry.episodes,
+    );
+  }
+
+  Future<void> _loadMoreSeries(PlaybackQueueEntry entry) async {
+    final series = _seriesForLoading(entry);
+    if (series == null || _loadingMoreSeriesIds.contains(entry.id)) return;
+    final nextPage = (entry.episodes.length ~/ _seriesPageSize) + 1;
+    setState(() => _loadingMoreSeriesIds.add(entry.id));
+    AppLogger.userAction(
+      'load_more_queue_series',
+      area: 'player',
+      data: {
+        'seriesId': entry.id,
+        'title': entry.title,
+        'page': nextPage,
+        'pageSize': _seriesPageSize,
+      },
+    );
+    try {
+      final nextSeries = await ref
+          .read(seriesServiceProvider)
+          .load(series, page: nextPage, pageSize: _seriesPageSize);
+      final loaded = series.copyWith(
+        episodes: _mergeEpisodes(entry.episodes, nextSeries.episodes),
+      );
+      ref.read(playbackQueueProvider.notifier).updateSeries(loaded);
+      if (mounted) {
+        setState(() {
+          _seriesHasMore[entry.id] =
+              nextSeries.episodes.length == _seriesPageSize;
+        });
+      }
+      AppLogger.result(
+        'load_more_queue_series',
+        area: 'player',
+        data: {
+          'seriesId': entry.id,
+          'title': entry.title,
+          'page': nextPage,
+          'episodeCount': loaded.episodes.length,
+        },
+      );
+    } catch (error, stackTrace) {
+      AppLogger.failure(
+        'load_more_queue_series',
+        error,
+        area: 'player',
+        stackTrace: stackTrace,
+        data: {'seriesId': entry.id, 'title': entry.title, 'page': nextPage},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingMoreSeriesIds.remove(entry.id));
+      }
+    }
+  }
+
+  List<Episode> _mergeEpisodes(List<Episode> current, List<Episode> incoming) {
+    final seen = current.map((episode) => episode.id).toSet();
+    return [...current, ...incoming.where((episode) => seen.add(episode.id))];
+  }
 }
 
 class _EmptyQueue extends StatelessWidget {
@@ -196,7 +289,10 @@ class _SeriesQueueCard extends StatefulWidget {
     required this.loading,
     required this.busyEpisodeId,
     required this.currentEpisodeId,
+    required this.canLoadMore,
+    required this.loadingMore,
     required this.onPlayEpisode,
+    required this.onLoadMore,
   });
 
   final PlaybackQueueEntry entry;
@@ -204,7 +300,10 @@ class _SeriesQueueCard extends StatefulWidget {
   final bool loading;
   final String? busyEpisodeId;
   final String? currentEpisodeId;
+  final bool canLoadMore;
+  final bool loadingMore;
   final void Function(Episode episode, int childIndex) onPlayEpisode;
+  final VoidCallback onLoadMore;
 
   @override
   State<_SeriesQueueCard> createState() => _SeriesQueueCardState();
@@ -233,14 +332,14 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
     ].join(' · ');
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 3),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
               child: Row(
                 children: [
                   Stack(
@@ -248,7 +347,7 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                     children: [
                       AppCover(
                         url: firstEpisode.imageUrl,
-                        size: 58,
+                        size: 52,
                         icon: Icons.podcasts,
                       ),
                       Positioned(
@@ -288,8 +387,6 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                       children: [
                         Text(
                           widget.entry.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
                                 fontWeight: FontWeight.w800,
@@ -352,7 +449,7 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                       ColoredBox(
                         color: colors.surfaceContainer.withValues(alpha: .42),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                          padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
                           child: Column(
                             children: [
                               for (
@@ -384,6 +481,28 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                                     episodeIndex,
                                   ),
                                 ),
+                              if (widget.canLoadMore) ...[
+                                const SizedBox(height: 4),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    icon: widget.loadingMore
+                                        ? const SizedBox.square(
+                                            dimension: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Icon(Icons.expand_more_rounded),
+                                    label: Text(
+                                      widget.loadingMore ? '加载中' : '加载更多',
+                                    ),
+                                    onPressed: widget.loadingMore
+                                        ? null
+                                        : widget.onLoadMore,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -430,8 +549,12 @@ class _SeriesEpisodeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final metadata = [
+      if (episode.publishedAt != null) formatRelativeDate(episode.publishedAt!),
+      if (episode.duration != null) formatDuration(episode.duration!),
+    ].join(' · ');
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: 2),
       child: Material(
         color: current
             ? colors.primaryContainer.withValues(alpha: .58)
@@ -441,7 +564,7 @@ class _SeriesEpisodeTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           onTap: onPlay,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+            padding: const EdgeInsets.fromLTRB(8, 5, 4, 5),
             child: Row(
               children: [
                 SizedBox(
@@ -458,37 +581,32 @@ class _SeriesEpisodeTile extends StatelessWidget {
                 const SizedBox(width: 8),
                 AppCover(
                   url: episode.imageUrl,
-                  size: 42,
+                  size: 38,
                   icon: Icons.music_note,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         episode.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           color: current ? colors.primary : null,
                           fontWeight: FontWeight.w700,
                           height: 1.25,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        [
-                          if (episode.duration != null)
-                            formatDuration(episode.duration!),
-                          episode.author ?? episode.sourceType.label,
-                        ].join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
+                      if (metadata.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          metadata,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colors.onSurfaceVariant),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),

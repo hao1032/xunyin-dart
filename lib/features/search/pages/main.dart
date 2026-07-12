@@ -438,11 +438,11 @@ class _SearchResultTile extends StatelessWidget {
     return AppListItem(
       coverUrl: result.imageUrl,
       title: result.title,
+      subtitle: result.subtitle ?? result.seriesTitle,
       metadata: [
         if (result.publishedAt != null) formatRelativeDate(result.publishedAt!),
         if (result.duration != null) formatDuration(result.duration!),
-        result.subtitle ?? result.seriesTitle,
-      ].whereType<String>().join(' · '),
+      ].join(' · '),
       enabled: enabled,
       onTap: onTap,
       actions: [

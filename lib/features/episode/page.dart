@@ -6,6 +6,7 @@ import '../../core/app_logger.dart';
 import '../../core/display_formatters.dart';
 import '../../core/plain_text.dart';
 import '../../core/app_layout.dart';
+import '../../shared/wigets/cached_cover_image.dart';
 import '../downloads/repository.dart';
 import '../downloads/model.dart';
 import '../player/services/playback_queue.dart';
@@ -149,17 +150,15 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                         borderRadius: BorderRadius.circular(10),
                         child: AspectRatio(
                           aspectRatio: 1,
-                          child: episode.imageUrl == null
-                              ? ColoredBox(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHighest,
-                                  child: const Icon(Icons.podcasts, size: 72),
-                                )
-                              : Image.network(
-                                  episode.imageUrl!,
-                                  fit: BoxFit.cover,
-                                ),
+                          child: CachedCoverImage(
+                            url: episode.imageUrl,
+                            placeholderBuilder: (context) => ColoredBox(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              child: const Icon(Icons.podcasts, size: 72),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -257,9 +256,6 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                                         : Icons.play_arrow,
                                   ),
                             onPressed: _loading ? null : _play,
-                            style: IconButton.styleFrom(
-                              minimumSize: const Size.square(48),
-                            ),
                           ),
                         ],
                       ),
@@ -360,8 +356,6 @@ class _RelatedSeriesLinks extends StatelessWidget {
           },
           child: Text(
             '${item.shortLabel}：${item.title}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.primary,
             ),

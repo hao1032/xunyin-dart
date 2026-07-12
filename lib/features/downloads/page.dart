@@ -70,13 +70,15 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
                       (item) => AppListItem(
                         coverUrl: item.episode.imageUrl,
                         title: item.episode.title,
+                        subtitle: [
+                          item.episode.author ?? item.episode.sourceType.label,
+                          _formatBytes(item.bytes),
+                        ].join(' · '),
                         metadata: [
                           if (item.episode.publishedAt != null)
                             formatRelativeDate(item.episode.publishedAt!),
                           if (item.episode.duration != null)
                             formatDuration(item.episode.duration!),
-                          item.episode.author ?? item.episode.sourceType.label,
-                          _formatBytes(item.bytes),
                         ].join(' · '),
                         onTap: () =>
                             context.push('/episode', extra: item.episode),

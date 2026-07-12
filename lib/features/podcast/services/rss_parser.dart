@@ -1,4 +1,5 @@
 import 'package:xml/xml.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/plain_text.dart';
 import '../../episode/model.dart';
@@ -46,10 +47,30 @@ class RssParser {
             series.imageUrl,
         mediaUrl: enclosure?.getAttribute('url'),
         duration: _duration(_text(item, 'itunes:duration')),
-        publishedAt: DateTime.tryParse(_text(item, 'pubDate') ?? ''),
+        publishedAt: _dateTime(_text(item, 'pubDate')),
       );
     }).toList();
     return series.copyWith(episodes: episodes);
+  }
+
+  DateTime? _dateTime(String? value) {
+    final text = value?.trim();
+    if (text == null || text.isEmpty) return null;
+    final parsed = DateTime.tryParse(text);
+    if (parsed != null) return parsed;
+    for (final pattern in const [
+      'EEE, dd MMM yyyy HH:mm:ss Z',
+      'dd MMM yyyy HH:mm:ss Z',
+      'EEE, dd MMM yyyy HH:mm Z',
+      'dd MMM yyyy HH:mm Z',
+    ]) {
+      try {
+        return DateFormat(pattern, 'en_US').parse(text, true).toLocal();
+      } on FormatException {
+        continue;
+      }
+    }
+    return null;
   }
 
   Duration? _duration(String? value) {

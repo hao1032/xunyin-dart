@@ -66,7 +66,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
                       coverUrl: series.imageUrl,
                       placeholderIcon: _seriesIcon(series),
                       title: series.title,
-                      metadata: '${series.label} · ${series.episodes.length} 集',
+                      subtitle: '${series.label} · ${series.episodes.length} 集',
                       actions: [
                         IconButton(
                           tooltip: '取消订阅',
