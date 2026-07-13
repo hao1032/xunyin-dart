@@ -128,7 +128,6 @@ class _QueuePageState extends ConsumerState<QueuePage> {
     required int index,
     int? childIndex,
   }) async {
-    if (_playingRequestEpisodeId != null) return;
     setState(() => _playingRequestEpisodeId = episode.id);
     AppLogger.userAction(
       'play_from_queue',
@@ -157,7 +156,11 @@ class _QueuePageState extends ConsumerState<QueuePage> {
       }
     } finally {
       if (mounted) {
-        setState(() => _playingRequestEpisodeId = null);
+        setState(() {
+          if (_playingRequestEpisodeId == episode.id) {
+            _playingRequestEpisodeId = null;
+          }
+        });
       }
     }
   }
