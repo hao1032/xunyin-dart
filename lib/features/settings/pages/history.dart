@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/app_logger.dart';
 import '../../../core/app_constants.dart';
-import '../../../core/display_formatters.dart';
 import '../../../shared/wigets/app_bar.dart';
-import '../../../shared/wigets/app_list_item.dart';
+import '../../../shared/wigets/app_episode_item.dart';
 import '../../downloads/repository.dart';
 import '../../episode/model.dart';
 import '../../player/services/controller.dart';
@@ -90,68 +88,29 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                       episode.id,
                     );
                     final busy = _busyEpisodeIds.contains(episode.id);
-                    return AppListItem(
-                      coverUrl: episode.imageUrl,
-                      title: episode.title,
-                      subtitle: episode.author ?? episode.sourceType.label,
-                      metadata: [
-                        if (episode.publishedAt != null)
-                          formatRelativeDate(episode.publishedAt!),
-                        if (episode.duration != null)
-                          formatDuration(episode.duration!),
-                      ].join(' · '),
-                      onTap: () {
-                        AppLogger.userAction(
-                          'open_history_episode',
-                          area: 'settings',
-                          data: {
-                            'episodeId': episode.id,
-                            'title': episode.title,
-                          },
+                    return AppEpisodeItem(
+                      episode: episode,
+                      subtitle: AppEpisodeItem.subtitleOf(episode),
+                      metadata: AppEpisodeItem.metadataOf(episode),
+                      isDownloaded: downloaded,
+                      isDownloadBusy: busy,
+                      onOpen: () => AppLogger.userAction(
+                        'open_history_episode',
+                        area: 'settings',
+                        data: {'episodeId': episode.id, 'title': episode.title},
+                      ),
+                      onAddToQueue: () {
+                        ref.read(playbackQueueProvider.notifier).add(episode);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(AppText.addedToQueueFull),
+                          ),
                         );
-                        context.push('/episode', extra: episode);
                       },
-                      actions: [
-                        IconButton(
-                          tooltip: AppText.addToQueueFull,
-                          icon: const Icon(AppIcons.addToQueue),
-                          onPressed: () {
-                            ref
-                                .read(playbackQueueProvider.notifier)
-                                .add(episode);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(AppText.addedToQueueFull),
-                              ),
-                            );
-                          },
-                        ),
-                        IconButton(
-                          tooltip: downloaded
-                              ? AppText.downloaded
-                              : AppText.download,
-                          icon: busy
-                              ? const SizedBox.square(
-                                  dimension: AppSizes.indicator,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(
-                                  downloaded
-                                      ? AppIcons.downloadDone
-                                      : AppIcons.download,
-                                ),
-                          onPressed: busy || downloaded
-                              ? null
-                              : () => _toggleDownload(episode),
-                        ),
-                        IconButton(
-                          tooltip: AppText.play,
-                          icon: const Icon(AppIcons.play),
-                          onPressed: () => _playEpisode(episode),
-                        ),
-                      ],
+                      onDownload: busy || downloaded
+                          ? null
+                          : () => _toggleDownload(episode),
+                      onPlay: () => _playEpisode(episode),
                     );
                   },
                 );

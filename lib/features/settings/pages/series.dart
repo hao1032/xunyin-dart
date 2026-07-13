@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/app_logger.dart';
 import '../../../core/app_constants.dart';
 import '../../../shared/wigets/app_bar.dart';
-import '../../../shared/wigets/app_list_item.dart';
+import '../../../shared/wigets/app_episode_item.dart';
+import '../../episode/model.dart';
 import '../../series/model.dart';
 import '../repository.dart';
 
@@ -68,19 +69,10 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
                   itemCount: subscriptions.length,
                   itemBuilder: (context, index) {
                     final series = subscriptions[index];
-                    return AppListItem(
-                      coverUrl: series.imageUrl,
+                    return AppEpisodeItem(
+                      episode: _seriesDisplayEpisode(series),
                       placeholderIcon: _seriesIcon(series),
-                      title: series.title,
                       subtitle: '${series.label} · ${series.episodes.length} 集',
-                      actions: [
-                        IconButton(
-                          tooltip: '取消订阅',
-                          icon: const Icon(AppIcons.remove),
-                          onPressed: () => _unsubscribe(series),
-                        ),
-                        const Icon(AppIcons.chevronRight),
-                      ],
                       onTap: () {
                         AppLogger.userAction(
                           'open_subscription',
@@ -93,6 +85,8 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
                         );
                         context.push('/series', extra: series);
                       },
+                      onRemove: () => _unsubscribe(series),
+                      removeTooltip: '取消订阅',
                     );
                   },
                 );
@@ -117,6 +111,25 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
     BilibiliCollectionSeries() => AppIcons.videoLibrary,
     BilibiliCreatorSeries() => AppIcons.userRounded,
     RssPodcastSeries() => AppIcons.podcasts,
+  };
+
+  Episode _seriesDisplayEpisode(Series series) {
+    final firstEpisode = series.episodes.firstOrNull;
+    return Episode(
+      id: series.id,
+      seriesId: series.id,
+      title: series.title,
+      sourceType: firstEpisode?.sourceType ?? _seriesSourceType(series),
+      originalUrl: series.originalUrl,
+      author: series.label,
+      imageUrl: series.imageUrl,
+    );
+  }
+
+  SourceType _seriesSourceType(Series series) => switch (series) {
+    BilibiliCollectionSeries() => SourceType.bilibili,
+    BilibiliCreatorSeries() => SourceType.bilibili,
+    RssPodcastSeries() => SourceType.rss,
   };
 }
 

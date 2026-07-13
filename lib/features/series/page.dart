@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:just_audio/just_audio.dart';
 
 import '../../core/app_logger.dart';
 import '../../core/display_formatters.dart';
@@ -9,13 +8,12 @@ import '../../core/plain_text.dart';
 import '../../core/app_layout.dart';
 import '../../shared/wigets/app_bar.dart';
 import '../../shared/wigets/app_detail.dart';
-import '../../shared/wigets/app_list_item.dart';
+import '../../shared/wigets/app_episode_item.dart';
 import '../downloads/repository.dart';
 import '../settings/repository.dart';
 import '../player/services/playback_queue.dart';
 import '../player/services/controller.dart';
 import '../episode/model.dart';
-import '../episode/page.dart';
 import 'model.dart';
 import 'service.dart';
 
@@ -449,107 +447,58 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                                 episode.id,
                               );
                               final busy = _busyEpisodeIds.contains(episode.id);
-                              return AppListItem(
-                                coverUrl: episode.imageUrl,
-                                placeholderIcon: AppIcons.music,
-                                title: episode.title,
+                              return AppEpisodeItem(
+                                episode: episode,
                                 subtitle: _episodeSubtitle(episode),
-                                metadata: _episodeMetadata(episode),
-                                onTap: () {
+                                metadata: AppEpisodeItem.metadataOf(episode),
+                                onOpen: () => AppLogger.userAction(
+                                  'open_episode',
+                                  area: 'podcast',
+                                  data: {
+                                    'episodeId': episode.id,
+                                    'title': episode.title,
+                                    'seriesId': series.id,
+                                  },
+                                ),
+                                isQueued: episodeQueued,
+                                isDownloaded: downloaded,
+                                isDownloadBusy: busy,
+                                isBusy: _loadingEpisodes,
+                                onAddToQueue: () {
                                   AppLogger.userAction(
-                                    'open_episode',
-                                    area: 'podcast',
+                                    'add_episode_to_queue',
+                                    area: 'player',
                                     data: {
                                       'episodeId': episode.id,
                                       'title': episode.title,
                                       'seriesId': series.id,
                                     },
                                   );
-                                  context.push(
-                                    '/episode',
-                                    extra: EpisodePageArgs(
-                                      episode: episode,
-                                      relatedSeries: [series],
+                                  ref
+                                      .read(playbackQueueProvider.notifier)
+                                      .add(episode);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(AppText.addedToQueueFull),
                                     ),
                                   );
                                 },
-                                actions: [
-                                  IconButton(
-                                    tooltip: episodeQueued
-                                        ? AppText.addedToQueueFull
-                                        : AppText.addToQueueFull,
-                                    icon: Icon(
-                                      episodeQueued
-                                          ? AppIcons.addedToQueue
-                                          : AppIcons.addToQueue,
-                                    ),
-                                    onPressed: episodeQueued
-                                        ? null
-                                        : () {
-                                            AppLogger.userAction(
-                                              'add_episode_to_queue',
-                                              area: 'player',
-                                              data: {
-                                                'episodeId': episode.id,
-                                                'title': episode.title,
-                                                'seriesId': series.id,
-                                              },
-                                            );
-                                            ref
-                                                .read(
-                                                  playbackQueueProvider
-                                                      .notifier,
-                                                )
-                                                .add(episode);
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  AppText.addedToQueueFull,
-                                                ),
-                                              ),
-                                            );
+                                onDownload: busy || downloaded
+                                    ? null
+                                    : () {
+                                        AppLogger.userAction(
+                                          'toggle_episode_download',
+                                          area: 'download',
+                                          data: {
+                                            'episodeId': episode.id,
+                                            'title': episode.title,
+                                            'downloaded': downloaded,
                                           },
-                                  ),
-                                  IconButton(
-                                    tooltip: downloaded
-                                        ? AppText.downloaded
-                                        : AppText.download,
-                                    icon: busy
-                                        ? const SizedBox.square(
-                                            dimension: AppSizes.indicator,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : Icon(
-                                            downloaded
-                                                ? AppIcons.downloadDone
-                                                : AppIcons.download,
-                                          ),
-                                    onPressed: busy || downloaded
-                                        ? null
-                                        : () {
-                                            AppLogger.userAction(
-                                              'toggle_episode_download',
-                                              area: 'download',
-                                              data: {
-                                                'episodeId': episode.id,
-                                                'title': episode.title,
-                                                'downloaded': downloaded,
-                                              },
-                                            );
-                                            _toggleDownload(episode);
-                                          },
-                                  ),
-                                  _SeriesEpisodePlayButton(
-                                    episode: episode,
-                                    loading: _loadingEpisodes,
-                                    onPlay: () => _playEpisode(episode),
-                                    onPause: () => _pauseEpisode(episode),
-                                  ),
-                                ],
+                                        );
+                                        _toggleDownload(episode);
+                                      },
+                                onPlay: () => _playEpisode(episode),
+                                onPause: () => _pauseEpisode(episode),
                               );
                             }).toList(),
                           ),
@@ -568,14 +517,6 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
 
   String? _episodeSubtitle(Episode episode) {
     return episode.author ?? episode.sourceType.label;
-  }
-
-  String _episodeMetadata(Episode episode) {
-    final parts = <String>[
-      if (episode.publishedAt != null) formatRelativeDate(episode.publishedAt!),
-      if (episode.duration != null) formatDuration(episode.duration!),
-    ];
-    return parts.join(' · ');
   }
 
   String _seriesMetadata(Series series, List<Episode> episodes) {
@@ -665,52 +606,6 @@ class _SeriesAuthor extends StatelessWidget {
         onPressed: () => onOpenCreator(creator),
         child: Text(creator.title),
       ),
-    );
-  }
-}
-
-class _SeriesEpisodePlayButton extends ConsumerWidget {
-  const _SeriesEpisodePlayButton({
-    required this.episode,
-    required this.loading,
-    required this.onPlay,
-    required this.onPause,
-  });
-
-  final Episode episode;
-  final bool loading;
-  final VoidCallback onPlay;
-  final VoidCallback onPause;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final queue = ref.watch(playbackQueueProvider);
-    final player = ref.watch(appPlayerProvider);
-    final isCurrent = queue.current?.id == episode.id;
-    return StreamBuilder<PlayerState>(
-      stream: player.playerStateStream,
-      builder: (context, snapshot) {
-        final state = snapshot.data;
-        final processingState =
-            state?.processingState ?? player.processingState;
-        final buffering =
-            processingState == ProcessingState.loading ||
-            processingState == ProcessingState.buffering;
-        final playing = isCurrent && (state?.playing ?? player.playing);
-        final busy = loading || (isCurrent && buffering && !playing);
-        return IconButton(
-          tooltip: busy
-              ? AppText.loading
-              : (playing ? AppText.pause : AppText.play),
-          icon: busy
-              ? const SizedBox.square(
-                  dimension: AppSizes.indicator,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(playing ? AppIcons.pause : AppIcons.play),
-          onPressed: busy ? null : (playing ? onPause : onPlay),
-        );
-      },
     );
   }
 }

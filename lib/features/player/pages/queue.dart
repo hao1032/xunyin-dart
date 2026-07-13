@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../../core/app_logger.dart';
-import '../../../core/display_formatters.dart';
 import '../../../core/app_layout.dart';
 import '../../../shared/wigets/app_bar.dart';
-import '../../../shared/wigets/app_list_item.dart';
+import '../../../shared/wigets/app_cover.dart';
+import '../../../shared/wigets/app_episode_item.dart';
 import '../../episode/model.dart';
 import '../../series/model.dart';
 import '../../series/service.dart';
@@ -30,109 +30,89 @@ class _QueuePageState extends ConsumerState<QueuePage> {
   @override
   Widget build(BuildContext context) {
     final queue = ref.watch(playbackQueueProvider);
-    final player = ref.watch(appPlayerProvider);
     return Scaffold(
       appBar: const AppPageBar(title: AppText.playlistTitle),
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder<PlayerState>(
-              stream: player.playerStateStream,
-              builder: (context, snapshot) {
-                final state = snapshot.data;
-                final playing = state?.playing ?? player.playing;
-                final processingState =
-                    state?.processingState ?? player.processingState;
-                final loading =
-                    processingState == ProcessingState.loading ||
-                    processingState == ProcessingState.buffering;
-                return queue.items.isEmpty
-                    ? const _EmptyQueue()
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.page,
-                          AppSpacing.xs,
-                          AppSpacing.page,
-                          AppSpacing.xl,
-                        ),
-                        itemCount: queue.items.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: AppSpacing.xs),
-                        itemBuilder: (context, index) {
-                          final entry = queue.items[index];
-                          final selected =
-                              queue.current != null &&
-                              entry.containsEpisode(queue.current!.id);
-                          final active = selected && playing;
-                          final itemLoading = selected && !playing && loading;
-                          if (entry.type == PlaybackQueueEntryType.series) {
-                            return _SeriesQueueCard(
-                              entry: entry,
-                              playing: active,
-                              loading: itemLoading,
-                              busyEpisodeId: _playingRequestEpisodeId,
-                              currentEpisodeId: queue.current?.id,
-                              canLoadMore: _canLoadMoreSeries(entry),
-                              loadingMore: _loadingMoreSeriesIds.contains(
-                                entry.id,
-                              ),
-                              onPlayEpisode: (episode, childIndex) =>
-                                  _playEpisode(
-                                    context,
-                                    episode,
-                                    index: index,
-                                    childIndex: childIndex,
-                                  ),
-                              onPause: () =>
-                                  _pauseFromQueue(queue.current, index: index),
-                              onLoadMore: () => _loadMoreSeries(entry),
-                            );
-                          }
-                          final episode = entry.episodes.first;
-                          return AppListItem(
-                            coverUrl: episode.imageUrl,
-                            title: entry.title,
-                            subtitle: _queueSubtitle(
-                              episode,
-                              fallback: entry.subtitle,
+            child: queue.items.isEmpty
+                ? const _EmptyQueue()
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.page,
+                      AppSpacing.xs,
+                      AppSpacing.page,
+                      AppSpacing.xl,
+                    ),
+                    itemCount: queue.items.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.xs),
+                    itemBuilder: (context, index) {
+                      final entry = queue.items[index];
+                      final selected =
+                          queue.current != null &&
+                          entry.containsEpisode(queue.current!.id);
+                      if (entry.type == PlaybackQueueEntryType.series) {
+                        return _SeriesQueueCard(
+                          entry: entry,
+                          currentEpisodeId: queue.current?.id,
+                          busyEpisodeId: _playingRequestEpisodeId,
+                          canLoadMore: _canLoadMoreSeries(entry),
+                          loadingMore: _loadingMoreSeriesIds.contains(entry.id),
+                          onPlayEpisode: (episode, childIndex) => _playEpisode(
+                            context,
+                            episode,
+                            index: index,
+                            childIndex: childIndex,
+                          ),
+                          onOpenEpisode: (episode) => AppEpisodeItem.open(
+                            context,
+                            episode,
+                            relatedSeries: entry.series == null
+                                ? const []
+                                : [entry.series!],
+                            onOpen: () => AppLogger.userAction(
+                              'open_episode_from_queue',
+                              area: 'player',
+                              data: {
+                                'episodeId': episode.id,
+                                'title': episode.title,
+                              },
                             ),
-                            compact: true,
-                            onTap: () =>
-                                _playEpisode(context, episode, index: index),
-                            actions: [
-                              _QueuePlayButton(
-                                playing: active,
-                                loading:
-                                    _playingRequestEpisodeId == episode.id ||
-                                    itemLoading,
-                                tooltip: active
-                                    ? AppText.pause
-                                    : (itemLoading
-                                          ? AppText.loading
-                                          : AppText.play),
-                                onPressed: active
-                                    ? () =>
-                                          _pauseFromQueue(episode, index: index)
-                                    : () => _playEpisode(
-                                        context,
-                                        episode,
-                                        index: index,
-                                      ),
-                              ),
-                            ],
-                          );
-                        },
+                          ),
+                          onPause: () =>
+                              _pauseFromQueue(queue.current, index: index),
+                          onLoadMore: () => _loadMoreSeries(entry),
+                        );
+                      }
+                      final episode = entry.episodes.first;
+                      return AppEpisodeItem(
+                        episode: episode,
+                        subtitle: AppEpisodeItem.subtitleOf(
+                          episode,
+                          fallback: entry.subtitle,
+                        ),
+                        metadata: AppEpisodeItem.metadataOf(episode),
+                        selected: selected,
+                        onOpen: () => AppLogger.userAction(
+                          'open_episode_from_queue',
+                          area: 'player',
+                          data: {
+                            'episodeId': episode.id,
+                            'title': episode.title,
+                          },
+                        ),
+                        isBusy: _playingRequestEpisodeId == episode.id,
+                        onPlay: () =>
+                            _playEpisode(context, episode, index: index),
+                        onPause: () => _pauseFromQueue(episode, index: index),
                       );
-              },
-            ),
+                    },
+                  ),
           ),
         ],
       ),
     );
-  }
-
-  String _queueSubtitle(Episode episode, {String? fallback}) {
-    return fallback ?? episode.author ?? episode.sourceType.label;
   }
 
   Future<void> _playEpisode(
@@ -286,37 +266,35 @@ class _EmptyQueue extends StatelessWidget {
   }
 }
 
-class _SeriesQueueCard extends StatefulWidget {
+class _SeriesQueueCard extends ConsumerStatefulWidget {
   const _SeriesQueueCard({
     required this.entry,
-    required this.playing,
-    required this.loading,
     required this.busyEpisodeId,
     required this.currentEpisodeId,
     required this.canLoadMore,
     required this.loadingMore,
     required this.onPlayEpisode,
+    required this.onOpenEpisode,
     required this.onPause,
     required this.onLoadMore,
   });
 
   final PlaybackQueueEntry entry;
-  final bool playing;
-  final bool loading;
   final String? busyEpisodeId;
   final String? currentEpisodeId;
   final bool canLoadMore;
   final bool loadingMore;
   final void Function(Episode episode, int childIndex) onPlayEpisode;
+  final ValueChanged<Episode> onOpenEpisode;
   final VoidCallback onPause;
   final VoidCallback onLoadMore;
 
   @override
-  State<_SeriesQueueCard> createState() => _SeriesQueueCardState();
+  ConsumerState<_SeriesQueueCard> createState() => _SeriesQueueCardState();
 }
 
-class _SeriesQueueCardState extends State<_SeriesQueueCard> {
-  static const _episodeTileEstimatedHeight = 64.0;
+class _SeriesQueueCardState extends ConsumerState<_SeriesQueueCard> {
+  static const _episodeTileEstimatedHeight = 76.0;
   static const _loadMoreEstimatedHeight = 52.0;
 
   var _expanded = false;
@@ -441,20 +419,15 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  _QueuePlayButton(
-                    playing: widget.playing,
-                    loading:
-                        widget.busyEpisodeId == playableEpisode.id ||
-                        widget.loading,
-                    tooltip: widget.playing
-                        ? AppText.pause
-                        : (widget.loading ? AppText.loading : '播放系列'),
-                    onPressed: widget.playing
-                        ? widget.onPause
-                        : () => widget.onPlayEpisode(
-                            playableEpisode,
-                            playableEpisodeIndex < 0 ? 0 : playableEpisodeIndex,
-                          ),
+                  _SeriesQueuePlayButton(
+                    entry: widget.entry,
+                    episode: playableEpisode,
+                    busyEpisodeId: widget.busyEpisodeId,
+                    onPause: widget.onPause,
+                    onPlay: () => widget.onPlayEpisode(
+                      playableEpisode,
+                      playableEpisodeIndex < 0 ? 0 : playableEpisodeIndex,
+                    ),
                   ),
                 ],
               ),
@@ -524,14 +497,32 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                                     widget.entry.episodes[episodeIndex];
                                 final current =
                                     episode.id == widget.currentEpisodeId;
-                                return _SeriesEpisodeTile(
+                                return AppEpisodeItem(
                                   episode: episode,
-                                  episodeIndex: episodeIndex,
-                                  current: current,
-                                  playing: widget.playing && current,
-                                  loading:
-                                      episode.id == widget.busyEpisodeId ||
-                                      (widget.loading && current),
+                                  embedded: true,
+                                  selected: current,
+                                  margin: const EdgeInsets.only(top: 2),
+                                  leading: SizedBox(
+                                    width: 30,
+                                    child: Text(
+                                      '${episodeIndex + 1}',
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge
+                                          ?.copyWith(
+                                            color: current
+                                                ? colors.primary
+                                                : colors.onSurfaceVariant,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                  ),
+                                  coverSize: 44,
+                                  subtitle: AppEpisodeItem.subtitleOf(episode),
+                                  metadata: AppEpisodeItem.metadataOf(episode),
+                                  onOpen: () => widget.onOpenEpisode(episode),
+                                  isBusy: episode.id == widget.busyEpisodeId,
                                   onPlay: () => widget.onPlayEpisode(
                                     episode,
                                     episodeIndex,
@@ -565,134 +556,53 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
   }
 }
 
-class _SeriesEpisodeTile extends StatelessWidget {
-  const _SeriesEpisodeTile({
+class _SeriesQueuePlayButton extends ConsumerWidget {
+  const _SeriesQueuePlayButton({
+    required this.entry,
     required this.episode,
-    required this.episodeIndex,
-    required this.current,
-    required this.playing,
-    required this.loading,
+    required this.busyEpisodeId,
     required this.onPlay,
     required this.onPause,
   });
 
+  final PlaybackQueueEntry entry;
   final Episode episode;
-  final int episodeIndex;
-  final bool current;
-  final bool playing;
-  final bool loading;
+  final String? busyEpisodeId;
   final VoidCallback onPlay;
   final VoidCallback onPause;
 
   @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final metadata = [
-      if (episode.publishedAt != null) formatRelativeDate(episode.publishedAt!),
-      if (episode.duration != null) formatDuration(episode.duration!),
-    ].join(' · ');
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Material(
-        color: current
-            ? colors.primaryContainer.withValues(alpha: .58)
-            : AppColors.transparent,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          onTap: onPlay,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.sm,
-              AppSpacing.xs + 1,
-              AppSpacing.xs,
-              AppSpacing.xs + 1,
-            ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 30,
-                  child: Text(
-                    '${episodeIndex + 1}',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: current ? colors.primary : colors.onSurfaceVariant,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                AppCover(url: episode.imageUrl, size: 38, icon: AppIcons.music),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        episode.title,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: current ? colors.primary : null,
-                          fontWeight: FontWeight.w700,
-                          height: 1.25,
-                        ),
-                      ),
-                      if (metadata.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.xxs),
-                        Text(
-                          metadata,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: colors.onSurfaceVariant),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                _QueuePlayButton(
-                  playing: playing,
-                  loading: loading,
-                  tooltip: playing
-                      ? (loading ? AppText.loading : AppText.pause)
-                      : AppText.play,
-                  onPressed: playing ? onPause : onPlay,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QueuePlayButton extends StatelessWidget {
-  const _QueuePlayButton({
-    required this.playing,
-    required this.loading,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final bool playing;
-  final bool loading;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: loading ? AppText.loading : tooltip,
-      icon: loading
-          ? const SizedBox.square(
-              dimension: AppSizes.indicator,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : playing
-          ? const Icon(AppIcons.pause)
-          : const Icon(AppIcons.playRounded),
-      onPressed: loading ? null : onPressed,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final queue = ref.watch(playbackQueueProvider);
+    final player = ref.watch(appPlayerProvider);
+    final selected =
+        queue.current != null && entry.containsEpisode(queue.current!.id);
+    return StreamBuilder<PlayerState>(
+      stream: player.playerStateStream,
+      builder: (context, snapshot) {
+        final state = snapshot.data;
+        final processingState =
+            state?.processingState ?? player.processingState;
+        final playing = selected && (state?.playing ?? player.playing);
+        final loading =
+            busyEpisodeId == episode.id ||
+            (selected &&
+                !playing &&
+                (processingState == ProcessingState.loading ||
+                    processingState == ProcessingState.buffering));
+        return IconButton(
+          tooltip: loading
+              ? AppText.loading
+              : (playing ? AppText.pause : '播放系列'),
+          icon: loading
+              ? const SizedBox.square(
+                  dimension: AppSizes.indicator,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(playing ? AppIcons.pause : AppIcons.play),
+          onPressed: loading ? null : (playing ? onPause : onPlay),
+        );
+      },
     );
   }
 }

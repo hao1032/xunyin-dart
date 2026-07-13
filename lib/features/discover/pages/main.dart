@@ -6,7 +6,7 @@ import '../../../core/app_logger.dart';
 import '../../../core/display_formatters.dart';
 import '../../../core/app_layout.dart';
 import '../../../shared/wigets/app_bar.dart';
-import '../../../shared/wigets/app_list_item.dart';
+import '../../../shared/wigets/app_episode_item.dart';
 import '../../episode/model.dart';
 import '../repository.dart';
 import '../model.dart';
@@ -453,9 +453,19 @@ class _SearchResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppListItem(
-      coverUrl: result.imageUrl,
+    final episode = Episode(
+      id: result.id,
+      seriesId: result.seriesTitle ?? result.subtitle ?? result.id,
       title: result.title,
+      sourceType: result.sourceType,
+      originalUrl: result.originalUrl,
+      author: result.subtitle ?? result.seriesTitle,
+      imageUrl: result.imageUrl,
+      duration: result.duration,
+      publishedAt: result.publishedAt,
+    );
+    return AppEpisodeItem(
+      episode: episode,
       subtitle: result.subtitle ?? result.seriesTitle,
       metadata: [
         if (result.publishedAt != null) formatRelativeDate(result.publishedAt!),
@@ -463,14 +473,6 @@ class _SearchResultTile extends StatelessWidget {
       ].join(' · '),
       enabled: enabled,
       onTap: onTap,
-      actions: [
-        Icon(
-          enabled ? AppIcons.chevronRight : AppIcons.blocked,
-          color: enabled
-              ? Theme.of(context).colorScheme.onSurfaceVariant
-              : Theme.of(context).disabledColor,
-        ),
-      ],
     );
   }
 }

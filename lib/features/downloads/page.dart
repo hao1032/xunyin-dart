@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/app_logger.dart';
 import '../../core/app_constants.dart';
-import '../../core/display_formatters.dart';
 import '../../shared/wigets/app_bar.dart';
-import '../../shared/wigets/app_list_item.dart';
+import '../../shared/wigets/app_episode_item.dart';
 import '../player/services/playback_queue.dart';
 import '../player/services/controller.dart';
 import 'repository.dart';
@@ -68,52 +66,26 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
                       ),
                     ),
                     ...downloaded.map(
-                      (item) => AppListItem(
-                        coverUrl: item.episode.imageUrl,
-                        title: item.episode.title,
+                      (item) => AppEpisodeItem(
+                        episode: item.episode,
                         subtitle: [
                           item.episode.author ?? item.episode.sourceType.label,
                           _formatBytes(item.bytes),
                         ].join(' · '),
-                        metadata: [
-                          if (item.episode.publishedAt != null)
-                            formatRelativeDate(item.episode.publishedAt!),
-                          if (item.episode.duration != null)
-                            formatDuration(item.episode.duration!),
-                        ].join(' · '),
-                        onTap: () =>
-                            context.push('/episode', extra: item.episode),
-                        actions: [
-                          IconButton(
-                            tooltip: AppText.addToQueueFull,
-                            icon: const Icon(AppIcons.addToQueue),
-                            onPressed: () {
-                              ref
-                                  .read(playbackQueueProvider.notifier)
-                                  .add(item.episode);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(AppText.addedToQueueFull),
-                                ),
-                              );
-                            },
-                          ),
-                          IconButton(
-                            tooltip: AppText.downloaded,
-                            icon: const Icon(AppIcons.downloadDone),
-                            onPressed: null,
-                          ),
-                          IconButton(
-                            tooltip: '播放下载',
-                            icon: const Icon(AppIcons.play),
-                            onPressed: () => _playDownloaded(item),
-                          ),
-                          IconButton(
-                            tooltip: '删除下载',
-                            icon: const Icon(AppIcons.trash),
-                            onPressed: () => _removeDownloaded(item),
-                          ),
-                        ],
+                        metadata: AppEpisodeItem.metadataOf(item.episode),
+                        isDownloaded: true,
+                        onAddToQueue: () {
+                          ref
+                              .read(playbackQueueProvider.notifier)
+                              .add(item.episode);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(AppText.addedToQueueFull),
+                            ),
+                          );
+                        },
+                        onPlay: () => _playDownloaded(item),
+                        onRemoveDownload: () => _removeDownloaded(item),
                       ),
                     ),
                   ],
