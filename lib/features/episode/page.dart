@@ -6,12 +6,12 @@ import '../../core/app_logger.dart';
 import '../../core/display_formatters.dart';
 import '../../core/plain_text.dart';
 import '../../core/app_layout.dart';
+import '../../shared/wigets/app_bar.dart';
 import '../../shared/wigets/cached_cover_image.dart';
 import '../downloads/repository.dart';
 import '../downloads/model.dart';
 import '../player/services/playback_queue.dart';
 import '../player/services/controller.dart';
-import '../player/pages/mini.dart';
 import '../series/model.dart';
 import 'model.dart';
 
@@ -133,7 +133,7 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
       if (episode.duration != null) formatDuration(episode.duration!),
     ];
     return Scaffold(
-      appBar: AppBar(title: Text(episode.sourceType.label)),
+      appBar: AppPageBar(title: episode.sourceType.label),
       body: Column(
         children: [
           Expanded(
@@ -283,7 +283,6 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
               ],
             ),
           ),
-          const MiniPlayer(),
         ],
       ),
     );

@@ -5,18 +5,16 @@ import 'package:just_audio/just_audio.dart';
 import '../../../core/app_logger.dart';
 import '../../../core/display_formatters.dart';
 import '../../../core/app_layout.dart';
+import '../../../shared/wigets/app_bar.dart';
 import '../../../shared/wigets/app_list_item.dart';
 import '../../episode/model.dart';
 import '../../series/model.dart';
 import '../../series/service.dart';
 import '../services/playback_queue.dart';
 import '../services/controller.dart';
-import 'mini.dart';
 
 class QueuePage extends ConsumerStatefulWidget {
-  const QueuePage({super.key, this.showMiniPlayer = true});
-
-  final bool showMiniPlayer;
+  const QueuePage({super.key});
 
   @override
   ConsumerState<QueuePage> createState() => _QueuePageState();
@@ -34,7 +32,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
     final queue = ref.watch(playbackQueueProvider);
     final player = ref.watch(appPlayerProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('播放列表')),
+      appBar: const AppPageBar(title: '播放列表'),
       body: Column(
         children: [
           Expanded(
@@ -115,7 +113,6 @@ class _QueuePageState extends ConsumerState<QueuePage> {
               },
             ),
           ),
-          if (widget.showMiniPlayer) const MiniPlayer(),
         ],
       ),
     );

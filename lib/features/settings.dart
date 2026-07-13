@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/app_logger.dart';
 import '../core/app_layout.dart';
 import '../shared/wigets/app_action_card.dart';
+import '../shared/wigets/app_bar.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key, this.showAppBar = true});
@@ -14,7 +15,7 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: showAppBar ? AppBar(title: const Text('设置')) : null,
+      appBar: showAppBar ? const AppPageBar(title: '设置') : null,
       body: ListView(
         padding: EdgeInsets.zero,
         children: [

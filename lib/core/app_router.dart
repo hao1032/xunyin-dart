@@ -15,6 +15,7 @@ import '../features/search/pages/main.dart';
 import '../features/settings.dart';
 import '../features/settings/pages/history.dart';
 import '../features/settings/pages/series.dart';
+import '../shared/wigets/app_bar.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -79,7 +80,7 @@ class _MissingRouteData extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('无法打开')),
+      appBar: const AppPageBar(title: '无法打开'),
       body: const Center(child: Text('页面缺少必要数据')),
     );
   }

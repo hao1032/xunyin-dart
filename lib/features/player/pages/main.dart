@@ -6,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../../core/app_logger.dart';
 import '../../../core/display_formatters.dart';
 import '../../../core/app_layout.dart';
+import '../../../shared/wigets/app_bar.dart';
 import '../../../shared/wigets/cached_cover_image.dart';
 import '../../episode/model.dart';
 import '../../episode/series_resolver.dart';
@@ -22,27 +23,7 @@ class PlayerPage extends ConsumerWidget {
     final queue = ref.watch(playbackQueueProvider);
     final episode = queue.current;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('正在播放'),
-        actions: [
-          IconButton(
-            tooltip: '播放列表',
-            icon: Badge.count(
-              count: queue.items.length,
-              isLabelVisible: queue.items.isNotEmpty,
-              child: const Icon(Icons.queue_music),
-            ),
-            onPressed: () {
-              AppLogger.userAction(
-                'open_queue_from_player',
-                area: 'player',
-                data: {'queueCount': queue.items.length},
-              );
-              context.push('/queue');
-            },
-          ),
-        ],
-      ),
+      appBar: const AppPageBar(title: '正在播放'),
       body: episode == null
           ? const Center(child: Text('还没有正在播放的内容'))
           : ListView(

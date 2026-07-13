@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_logger.dart';
+import '../../../shared/wigets/app_bar.dart';
 import '../../series/model.dart';
 import '../../bilibili/services/repository.dart';
 import '../../podcast/services/repository.dart';
@@ -112,7 +113,7 @@ class _SearchResultPageState extends ConsumerState<SearchResultPage> {
             },
           );
           return Scaffold(
-            appBar: AppBar(title: Text(widget.result.sourceType.label)),
+            appBar: AppPageBar(title: widget.result.sourceType.label),
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -140,7 +141,7 @@ class _SearchResultPageState extends ConsumerState<SearchResultPage> {
           );
         }
         return Scaffold(
-          appBar: AppBar(title: Text(widget.result.sourceType.label)),
+          appBar: AppPageBar(title: widget.result.sourceType.label),
           body: const Center(child: CircularProgressIndicator()),
         );
       },

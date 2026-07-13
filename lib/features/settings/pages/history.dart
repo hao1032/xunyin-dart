@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/app_logger.dart';
 import '../../../core/display_formatters.dart';
+import '../../../shared/wigets/app_bar.dart';
 import '../../../shared/wigets/app_list_item.dart';
 import '../../downloads/repository.dart';
 import '../../episode/model.dart';
-import '../../player/pages/mini.dart';
 import '../../player/services/controller.dart';
 import '../../player/services/playback_queue.dart';
 import '../repository.dart';
@@ -66,7 +66,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('历史记录')),
+      appBar: const AppPageBar(title: '历史记录'),
       body: Column(
         children: [
           Expanded(
@@ -153,7 +153,6 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
               },
             ),
           ),
-          const MiniPlayer(),
         ],
       ),
     );

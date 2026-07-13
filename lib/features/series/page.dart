@@ -6,11 +6,11 @@ import '../../core/app_logger.dart';
 import '../../core/display_formatters.dart';
 import '../../core/plain_text.dart';
 import '../../core/app_layout.dart';
+import '../../shared/wigets/app_bar.dart';
 import '../../shared/wigets/cached_cover_image.dart';
 import '../../shared/wigets/app_list_item.dart';
 import '../downloads/repository.dart';
 import '../settings/repository.dart';
-import '../player/pages/mini.dart';
 import '../player/services/playback_queue.dart';
 import '../player/services/controller.dart';
 import '../episode/model.dart';
@@ -304,7 +304,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
     final isCreatorSeries = series is BilibiliCreatorSeries;
     final description = plainTextOrNull(series.description);
     return Scaffold(
-      appBar: AppBar(title: Text(series.label)),
+      appBar: AppPageBar(title: series.label),
       body: Column(
         children: [
           Expanded(
@@ -563,7 +563,6 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
               ],
             ),
           ),
-          const MiniPlayer(),
         ],
       ),
     );

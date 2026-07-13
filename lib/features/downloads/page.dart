@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/app_logger.dart';
 import '../../core/display_formatters.dart';
+import '../../shared/wigets/app_bar.dart';
 import '../../shared/wigets/app_list_item.dart';
 import '../player/services/playback_queue.dart';
 import '../player/services/controller.dart';
-import '../player/pages/mini.dart';
 import 'repository.dart';
 import 'model.dart';
 
@@ -38,7 +38,7 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('下载管理')),
+      appBar: const AppPageBar(title: '下载管理'),
       body: Column(
         children: [
           Expanded(
@@ -118,7 +118,6 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
               },
             ),
           ),
-          const MiniPlayer(),
         ],
       ),
     );

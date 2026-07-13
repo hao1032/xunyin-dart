@@ -5,20 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/app_logger.dart';
 import '../../../core/display_formatters.dart';
 import '../../../core/app_layout.dart';
+import '../../../shared/wigets/app_bar.dart';
 import '../../../shared/wigets/app_list_item.dart';
-import '../../player/pages/mini.dart';
 import '../../episode/model.dart';
 import '../repository.dart';
 import '../model.dart';
 
 class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({
-    super.key,
-    this.showMiniPlayer = true,
-    this.showSettingsAction = true,
-  });
+  const SearchPage({super.key, this.showSettingsAction = true});
 
-  final bool showMiniPlayer;
   final bool showSettingsAction;
 
   @override
@@ -135,8 +130,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('发现'),
+      appBar: AppPageBar(
+        title: '发现',
         actions: widget.showSettingsAction
             ? [
                 IconButton(
@@ -243,7 +238,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               loading: () => const Center(child: CircularProgressIndicator()),
             ),
           ),
-          if (widget.showMiniPlayer) const MiniPlayer(),
         ],
       ),
     );

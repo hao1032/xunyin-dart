@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/app_logger.dart';
+import '../../../shared/wigets/app_bar.dart';
 import '../../../shared/wigets/app_list_item.dart';
 import '../../series/model.dart';
-import '../../player/pages/mini.dart';
 import '../repository.dart';
 
 class SeriesPage extends ConsumerStatefulWidget {
@@ -43,7 +43,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('频道')),
+      appBar: const AppPageBar(title: '频道'),
       body: Column(
         children: [
           Expanded(
@@ -93,7 +93,6 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
               },
             ),
           ),
-          const MiniPlayer(),
         ],
       ),
     );
