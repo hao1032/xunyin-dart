@@ -23,7 +23,7 @@ class PlayerPage extends ConsumerWidget {
     final queue = ref.watch(playbackQueueProvider);
     final episode = queue.current;
     return Scaffold(
-      appBar: const AppPageBar(title: '正在播放'),
+      appBar: const AppPageBar(title: '正在播放', showMiniPlayer: false),
       body: episode == null
           ? const Center(child: Text('还没有正在播放的内容'))
           : ListView(
@@ -35,22 +35,8 @@ class PlayerPage extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: AspectRatio(
-                          aspectRatio: 1,
-                          child: CachedCoverImage(
-                            url: episode.imageUrl,
-                            placeholderBuilder: (context) => ColoredBox(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                              child: const Icon(Icons.podcasts, size: 72),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 28),
+                      _PlayerCover(url: episode.imageUrl),
+                      const SizedBox(height: 22),
                       Text(
                         episode.title,
                         textAlign: TextAlign.center,
@@ -169,6 +155,42 @@ class PlayerPage extends ConsumerWidget {
                 ),
               ),
         );
+  }
+}
+
+class _PlayerCover extends StatelessWidget {
+  const _PlayerCover({required this.url});
+
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.sizeOf(context);
+    final maxHeight = (screenSize.height * 0.32).clamp(150.0, 280.0);
+    final maxWidth = (screenSize.width - 48).clamp(0.0, 520.0);
+    final placeholderHeight = maxHeight.clamp(140.0, maxWidth * 0.62);
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: CachedCoverImage(
+            url: url,
+            fit: BoxFit.contain,
+            decodeLogicalSize: Size(maxWidth, maxHeight),
+            placeholderBuilder: (context) => SizedBox(
+              width: maxWidth,
+              height: placeholderHeight,
+              child: ColoredBox(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: const Icon(Icons.podcasts, size: 56),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

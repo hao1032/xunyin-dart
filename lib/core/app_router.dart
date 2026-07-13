@@ -6,7 +6,6 @@ import '../features/home.dart';
 import '../features/episode/model.dart';
 import '../features/series/model.dart';
 import '../features/episode/page.dart';
-import '../features/player/pages/main.dart';
 import '../features/series/page.dart';
 import '../features/player/pages/queue.dart';
 import '../features/search/model.dart';
@@ -44,7 +43,10 @@ final appRouter = GoRouter(
       builder: (context, state) => const DownloadsPage(),
     ),
     GoRoute(path: '/queue', builder: (context, state) => const QueuePage()),
-    GoRoute(path: '/player', builder: (context, state) => const PlayerPage()),
+    GoRoute(
+      path: '/player',
+      builder: (context, state) => const MainShellPage(initialIndex: 1),
+    ),
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsPage(),

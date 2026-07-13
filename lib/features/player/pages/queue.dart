@@ -289,6 +289,9 @@ class _SeriesQueueCard extends StatefulWidget {
 }
 
 class _SeriesQueueCardState extends State<_SeriesQueueCard> {
+  static const _episodeTileEstimatedHeight = 64.0;
+  static const _loadMoreEstimatedHeight = 52.0;
+
   var _expanded = false;
 
   @override
@@ -309,6 +312,15 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
       if (widget.entry.lastPlayedEpisodeId != null && currentIndex < 0)
         '继续第 ${playableEpisodeIndex + 1} 集',
     ].join(' · ');
+    final maxEpisodeListHeight = (MediaQuery.sizeOf(context).height * 0.52)
+        .clamp(260.0, 520.0)
+        .toDouble();
+    final estimatedEpisodeListHeight =
+        widget.entry.episodes.length * _episodeTileEstimatedHeight +
+        (widget.canLoadMore ? _loadMoreEstimatedHeight : 0);
+    final episodeListHeight = estimatedEpisodeListHeight
+        .clamp(0.0, maxEpisodeListHeight)
+        .toDouble();
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 3),
@@ -429,60 +441,63 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                         color: colors.surfaceContainer.withValues(alpha: .42),
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
-                          child: Column(
-                            children: [
-                              for (
-                                var episodeIndex = 0;
-                                episodeIndex < widget.entry.episodes.length;
-                                episodeIndex++
-                              )
-                                _SeriesEpisodeTile(
-                                  episode: widget.entry.episodes[episodeIndex],
+                          child: SizedBox(
+                            height: episodeListHeight,
+                            child: ListView.builder(
+                              primary: false,
+                              padding: EdgeInsets.zero,
+                              itemCount:
+                                  widget.entry.episodes.length +
+                                  (widget.canLoadMore ? 1 : 0),
+                              itemBuilder: (context, episodeIndex) {
+                                if (episodeIndex >=
+                                    widget.entry.episodes.length) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton.icon(
+                                        icon: widget.loadingMore
+                                            ? const SizedBox.square(
+                                                dimension: 16,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : const Icon(
+                                                Icons.expand_more_rounded,
+                                              ),
+                                        label: Text(
+                                          widget.loadingMore ? '加载中' : '加载更多',
+                                        ),
+                                        onPressed: widget.loadingMore
+                                            ? null
+                                            : widget.onLoadMore,
+                                      ),
+                                    ),
+                                  );
+                                }
+
+                                final episode =
+                                    widget.entry.episodes[episodeIndex];
+                                final current =
+                                    episode.id == widget.currentEpisodeId;
+                                return _SeriesEpisodeTile(
+                                  episode: episode,
                                   episodeIndex: episodeIndex,
-                                  current:
-                                      widget.entry.episodes[episodeIndex].id ==
-                                      widget.currentEpisodeId,
-                                  playing:
-                                      widget.playing &&
-                                      widget.entry.episodes[episodeIndex].id ==
-                                          widget.currentEpisodeId,
+                                  current: current,
+                                  playing: widget.playing && current,
                                   loading:
-                                      widget.entry.episodes[episodeIndex].id ==
-                                          widget.busyEpisodeId ||
-                                      (widget.loading &&
-                                          widget
-                                                  .entry
-                                                  .episodes[episodeIndex]
-                                                  .id ==
-                                              widget.currentEpisodeId),
+                                      episode.id == widget.busyEpisodeId ||
+                                      (widget.loading && current),
                                   onPlay: () => widget.onPlayEpisode(
-                                    widget.entry.episodes[episodeIndex],
+                                    episode,
                                     episodeIndex,
                                   ),
-                                ),
-                              if (widget.canLoadMore) ...[
-                                const SizedBox(height: 4),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    icon: widget.loadingMore
-                                        ? const SizedBox.square(
-                                            dimension: 16,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Icon(Icons.expand_more_rounded),
-                                    label: Text(
-                                      widget.loadingMore ? '加载中' : '加载更多',
-                                    ),
-                                    onPressed: widget.loadingMore
-                                        ? null
-                                        : widget.onLoadMore,
-                                  ),
-                                ),
-                              ],
-                            ],
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),

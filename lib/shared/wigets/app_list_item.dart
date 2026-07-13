@@ -161,6 +161,7 @@ class AppCover extends StatelessWidget {
         dimension: size,
         child: CachedCoverImage(
           url: url,
+          decodeLogicalSize: Size.square(size),
           placeholderBuilder: (context) => ColoredBox(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             child: Icon(icon),

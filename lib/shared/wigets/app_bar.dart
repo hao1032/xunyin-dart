@@ -19,7 +19,9 @@ class AppPageBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
     return AppBar(
+      titleSpacing: canPop ? 0 : null,
       title: showMiniPlayer
           ? _AppPageBarTitle(title)
           : Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),

@@ -14,12 +14,14 @@ class CachedCoverImage extends StatelessWidget {
     required this.placeholderBuilder,
     this.errorBuilder,
     this.fit = BoxFit.cover,
+    this.decodeLogicalSize,
   });
 
   final String? url;
   final CoverFallbackBuilder placeholderBuilder;
   final CoverFallbackBuilder? errorBuilder;
   final BoxFit fit;
+  final Size? decodeLogicalSize;
 
   static final Map<String, Future<File>> _pendingDownloads = {};
 
@@ -35,9 +37,17 @@ class CachedCoverImage extends StatelessWidget {
       builder: (context, snapshot) {
         final file = snapshot.data;
         if (file != null) {
+          final decodeSize = decodeLogicalSize;
+          final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
           return Image.file(
             file,
             fit: fit,
+            cacheWidth: decodeSize == null
+                ? null
+                : (decodeSize.width * devicePixelRatio).round(),
+            cacheHeight: decodeSize == null
+                ? null
+                : (decodeSize.height * devicePixelRatio).round(),
             gaplessPlayback: true,
             errorBuilder: (_, _, _) =>
                 (errorBuilder ?? placeholderBuilder)(context),
