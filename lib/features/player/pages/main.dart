@@ -6,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../../core/app_logger.dart';
 import '../../../core/display_formatters.dart';
 import '../../../core/app_layout.dart';
+import '../../../core/plain_text.dart';
 import '../../../shared/wigets/app_bar.dart';
 import '../../../shared/wigets/app_detail.dart';
 import '../../episode/model.dart';
@@ -22,6 +23,9 @@ class PlayerPage extends ConsumerWidget {
     final player = ref.watch(appPlayerProvider);
     final queue = ref.watch(playbackQueueProvider);
     final episode = queue.current;
+    final description = episode == null
+        ? null
+        : plainTextOrNull(episode.description) ?? '暂无简介';
     return Scaffold(
       appBar: const AppPageBar(title: '正在播放', showMiniPlayer: false),
       body: episode == null
@@ -39,10 +43,10 @@ class PlayerPage extends ConsumerWidget {
                         title: episode.title,
                         coverUrl: episode.imageUrl,
                         coverIcon: Icons.music_note,
-                        subtitle: _PodcastLink(
+                        subtitle: _PlayerMetadata(
                           episode: episode,
                           queue: queue,
-                          onTap: () =>
+                          onPodcastTap: () =>
                               _openSeries(context, ref, episode, queue),
                         ),
                         children: [
@@ -99,6 +103,13 @@ class PlayerPage extends ConsumerWidget {
                                 ],
                               );
                             },
+                          ),
+                          const SizedBox(height: AppSpacing.section),
+                          const AppSectionTitle(title: '简介'),
+                          const SizedBox(height: 10),
+                          Text(
+                            description!,
+                            style: const TextStyle(height: 1.6),
                           ),
                         ],
                       ),
@@ -163,27 +174,45 @@ class PlayerPage extends ConsumerWidget {
   }
 }
 
-class _PodcastLink extends StatelessWidget {
-  const _PodcastLink({
+class _PlayerMetadata extends StatelessWidget {
+  const _PlayerMetadata({
     required this.episode,
     required this.queue,
-    required this.onTap,
+    required this.onPodcastTap,
   });
 
   final Episode episode;
   final PlaybackQueueState queue;
-  final VoidCallback onTap;
+  final VoidCallback onPodcastTap;
 
   @override
   Widget build(BuildContext context) {
-    final name = _podcastName();
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: TextButton.icon(
-        icon: const Icon(Icons.podcasts, size: 18),
-        label: Text('播客：$name'),
-        onPressed: onTap,
-      ),
+    final colors = Theme.of(context).colorScheme;
+    final style = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant);
+    final linkStyle = style?.copyWith(color: colors.primary);
+    final parts = <String>[
+      if (episode.publishedAt != null)
+        '发布日期：${formatRelativeDate(episode.publishedAt!)}',
+      if (episode.duration != null) '时长：${formatDuration(episode.duration!)}',
+    ];
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (final part in parts) ...[
+          Text(part, style: style),
+          Text('·', style: style),
+        ],
+        InkWell(
+          borderRadius: BorderRadius.circular(4),
+          onTap: onPodcastTap,
+          child: Text('播客：${_podcastName()}', style: linkStyle),
+        ),
+      ],
     );
   }
 

@@ -327,7 +327,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
     final isCreatorSeries = series is BilibiliCreatorSeries;
     final description = plainTextOrNull(series.description);
     return Scaffold(
-      appBar: AppPageBar(title: series.label),
+      appBar: const AppPageBar(title: '详情'),
       body: Column(
         children: [
           Expanded(
@@ -350,6 +350,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                           series: series,
                           onOpenCreator: _openCreatorSeries,
                         ),
+                        metadata: _seriesMetadata(series, episodes),
                         actions: Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -564,6 +565,29 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
       if (episode.duration != null) formatDuration(episode.duration!),
     ];
     return parts.join(' · ');
+  }
+
+  String _seriesMetadata(Series series, List<Episode> episodes) {
+    final latestPublishedAt = _latestPublishedAt(episodes);
+    final parts = <String>[
+      if (latestPublishedAt != null)
+        '更新日期：${formatRelativeDate(latestPublishedAt)}',
+      series.sourceType.label,
+      if (episodes.isNotEmpty) '共 ${series.episodes.length} 集',
+    ];
+    return parts.join(' · ');
+  }
+
+  DateTime? _latestPublishedAt(List<Episode> episodes) {
+    DateTime? latest;
+    for (final episode in episodes) {
+      final publishedAt = episode.publishedAt;
+      if (publishedAt == null) continue;
+      if (latest == null || publishedAt.isAfter(latest)) {
+        latest = publishedAt;
+      }
+    }
+    return latest;
   }
 
   List<Episode> _visibleEpisodes(Series series) {

@@ -143,7 +143,7 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
       if (episode.duration != null) formatDuration(episode.duration!),
     ];
     return Scaffold(
-      appBar: AppPageBar(title: episode.sourceType.label),
+      appBar: const AppPageBar(title: '详情'),
       body: Column(
         children: [
           Expanded(
