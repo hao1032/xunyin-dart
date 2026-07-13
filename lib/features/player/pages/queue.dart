@@ -34,25 +34,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
     final queue = ref.watch(playbackQueueProvider);
     final player = ref.watch(appPlayerProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('播放列表'),
-        actions: [
-          IconButton(
-            tooltip: '清空',
-            icon: const Icon(Icons.clear_all),
-            onPressed: queue.items.isEmpty
-                ? null
-                : () {
-                    AppLogger.userAction(
-                      'clear_queue',
-                      area: 'player',
-                      data: {'queueCount': queue.items.length},
-                    );
-                    ref.read(playbackQueueProvider.notifier).clear();
-                  },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('播放列表')),
       body: Column(
         children: [
           Expanded(
