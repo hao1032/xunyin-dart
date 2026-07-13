@@ -7,12 +7,12 @@ import '../../features/series/model.dart';
 import '../../features/downloads/model.dart';
 import 'app_json_store.dart';
 
-final libraryStoreProvider = Provider<LibraryStore>((ref) {
-  return LibraryStore(ref.watch(appJsonStoreProvider));
+final userDataStoreProvider = Provider<UserDataStore>((ref) {
+  return UserDataStore(ref.watch(appJsonStoreProvider));
 });
 
-class LibraryStore {
-  const LibraryStore(this._jsonStore);
+class UserDataStore {
+  const UserDataStore(this._jsonStore);
 
   static const _subscriptionsFileName = 'subscriptions.json';
   static const _historyFileName = 'history.json';

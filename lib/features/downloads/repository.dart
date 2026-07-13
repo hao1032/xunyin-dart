@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/app_logger.dart';
 import '../../core/http_client.dart';
-import '../../core/storage/library_store.dart';
+import '../../core/storage/user_data_store.dart';
 import '../episode/model.dart';
 import '../episode/playback_info.dart';
 import 'model.dart';
@@ -16,7 +16,7 @@ final episodeDownloadRepositoryProvider = Provider<EpisodeDownloadRepository>((
 ) {
   return EpisodeDownloadRepository(
     ref.watch(dioProvider),
-    ref.watch(libraryStoreProvider),
+    ref.watch(userDataStoreProvider),
     ref.watch(episodePlaybackInfoProvider),
   );
 });
@@ -25,7 +25,7 @@ class EpisodeDownloadRepository {
   const EpisodeDownloadRepository(this._dio, this._store, this._playbackInfo);
 
   final Dio _dio;
-  final LibraryStore _store;
+  final UserDataStore _store;
   final EpisodePlaybackInfoProvider _playbackInfo;
 
   Future<List<DownloadedEpisode>> downloadedEpisodes() async {

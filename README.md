@@ -81,17 +81,16 @@ lib/
     cache/                   # 音频缓存
     channel/                 # 跨来源统一频道模型与加载服务
     home/                    # 底部导航主界面
-    library/                 # 频道、历史与播放进度
     player/                  # 播放器、播放队列、B 站音频源
     podcast/                 # 单集模型、RSS 与 Apple Podcast
     search/                  # 搜索页面与聚合服务
-    settings/                # 设置页
+    settings/                # 设置页、本地频道、历史与播放进度
 test/                        # 数据层和解析逻辑测试
 ```
 
 ## 本地数据
 
-应用通过 `path_provider` 获取平台应用支持目录，并以 JSON 文件保存资料库数据：
+应用通过 `path_provider` 获取平台应用支持目录，并以 JSON 文件保存本地数据：
 
 - `subscriptions.json`：订阅节目
 - `history.json`：播放历史
@@ -107,7 +106,7 @@ test/                        # 数据层和解析逻辑测试
 - 播客 RSS 加载和解析由 `PodcastRepository` 与 `RssParser` 负责。
 - 跨来源频道加载集中在 `ChannelService`，页面不再分别判断 B站UP主或 RSS 播客。
 - 播放控制集中在 `PlaybackController`，它负责解析音频地址、恢复进度、记录历史和优先播放本地缓存。
-- 本地资料库写入通过 `LibraryRepository` 和 `LibraryStore` 完成。
+- 本地频道、历史与播放进度写入通过 `SettingsRepository` 和 `UserDataStore` 完成。
 
 ## 项目状态
 

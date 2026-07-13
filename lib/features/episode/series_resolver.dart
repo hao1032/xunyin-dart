@@ -2,29 +2,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_logger.dart';
 import '../bilibili/services/repository.dart';
-import '../library/repository.dart';
+import '../settings/repository.dart';
 import '../search/model.dart';
 import '../series/model.dart';
 import 'model.dart';
 
 final episodeSeriesResolverProvider = Provider<EpisodeSeriesResolver>((ref) {
   return EpisodeSeriesResolver(
-    ref.watch(libraryRepositoryProvider),
+    ref.watch(settingsRepositoryProvider),
     ref.watch(bilibiliRepositoryProvider),
   );
 });
 
 class EpisodeSeriesResolver {
-  const EpisodeSeriesResolver(this._library, this._bilibili);
+  const EpisodeSeriesResolver(this._settings, this._bilibili);
 
-  final LibraryRepository _library;
+  final SettingsRepository _settings;
   final BilibiliRepository _bilibili;
 
   Future<Series> resolve(
     Episode episode, {
     Iterable<EpisodeSeriesCandidate> queuedSeries = const [],
   }) async {
-    final subscriptions = await _library.subscriptions();
+    final subscriptions = await _settings.subscriptions();
     final subscribed = subscriptions.where((series) {
       return series.id == episode.seriesId ||
           series.episodes.any((item) => item.id == episode.id);

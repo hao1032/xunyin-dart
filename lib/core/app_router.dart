@@ -3,9 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../features/downloads/page.dart';
 import '../features/home.dart';
-import '../features/library/pages/history.dart';
-import '../features/library/pages/main.dart';
-import '../features/library/pages/series.dart';
 import '../features/episode/model.dart';
 import '../features/series/model.dart';
 import '../features/episode/page.dart';
@@ -16,6 +13,8 @@ import '../features/search/model.dart';
 import '../features/search/pages/result.dart';
 import '../features/search/pages/main.dart';
 import '../features/settings.dart';
+import '../features/settings/pages/history.dart';
+import '../features/settings/pages/series.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -30,7 +29,10 @@ final appRouter = GoRouter(
         return SearchResultPage(result: result);
       },
     ),
-    GoRoute(path: '/library', builder: (context, state) => const LibraryPage()),
+    GoRoute(
+      path: '/library',
+      builder: (context, state) => const SettingsPage(),
+    ),
     GoRoute(
       path: '/subscriptions',
       builder: (context, state) => const SeriesPage(),

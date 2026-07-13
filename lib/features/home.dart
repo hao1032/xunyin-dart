@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'player/pages/mini.dart';
 import 'player/pages/queue.dart';
-import 'library/pages/main.dart';
 import 'search/pages/main.dart';
+import 'settings.dart';
 
 class MainShellPage extends ConsumerStatefulWidget {
   const MainShellPage({super.key});
@@ -23,8 +23,8 @@ class _MainShellPageState extends ConsumerState<MainShellPage> {
         index: _selectedIndex,
         children: const [
           QueuePage(showMiniPlayer: false),
-          SearchPage(showMiniPlayer: false, showLibraryAction: false),
-          LibraryPage(showMiniPlayer: false),
+          SearchPage(showMiniPlayer: false, showSettingsAction: false),
+          SettingsPage(),
         ],
       ),
       bottomNavigationBar: Column(
@@ -56,9 +56,9 @@ class _MainShellPageState extends ConsumerState<MainShellPage> {
                   label: '发现',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.library_music_outlined),
-                  selectedIcon: Icon(Icons.library_music_rounded),
-                  label: '资料库',
+                  icon: Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings_rounded),
+                  label: '设置',
                 ),
               ],
             ),

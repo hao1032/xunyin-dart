@@ -1,18 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_logger.dart';
-import '../../core/storage/library_store.dart';
+import '../../core/storage/user_data_store.dart';
 import '../episode/model.dart';
 import '../series/model.dart';
 
-final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {
-  return LibraryRepository(ref.watch(libraryStoreProvider));
+final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
+  return SettingsRepository(ref.watch(userDataStoreProvider));
 });
 
-class LibraryRepository {
-  const LibraryRepository(this._store);
+class SettingsRepository {
+  const SettingsRepository(this._store);
 
-  final LibraryStore _store;
+  final UserDataStore _store;
 
   Future<List<Series>> subscriptions() => _store.loadSubscriptions();
 
@@ -25,7 +25,7 @@ class LibraryRepository {
     await _store.saveSubscription(series);
     AppLogger.result(
       'save_subscription',
-      area: 'library',
+      area: 'settings',
       data: {'seriesId': series.id, 'title': series.title},
     );
   }
@@ -34,7 +34,7 @@ class LibraryRepository {
     await _store.removeSubscription(seriesId);
     AppLogger.result(
       'remove_subscription',
-      area: 'library',
+      area: 'settings',
       data: {'seriesId': seriesId},
     );
   }
@@ -45,7 +45,7 @@ class LibraryRepository {
     await _store.addHistory(episode);
     AppLogger.result(
       'record_playback',
-      area: 'library',
+      area: 'settings',
       data: {'episodeId': episode.id, 'title': episode.title},
     );
   }
@@ -58,7 +58,7 @@ class LibraryRepository {
     await _store.savePlaybackPosition(episode.id, position);
     AppLogger.result(
       'save_playback_position',
-      area: 'library',
+      area: 'settings',
       data: {
         'episodeId': episode.id,
         'title': episode.title,
@@ -71,7 +71,7 @@ class LibraryRepository {
     await _store.removePlaybackPosition(episode.id);
     AppLogger.result(
       'clear_playback_position',
-      area: 'library',
+      area: 'settings',
       data: {'episodeId': episode.id, 'title': episode.title},
     );
   }

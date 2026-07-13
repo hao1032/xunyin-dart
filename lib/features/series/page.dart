@@ -9,7 +9,7 @@ import '../../core/app_layout.dart';
 import '../../shared/wigets/cached_cover_image.dart';
 import '../../shared/wigets/app_list_item.dart';
 import '../downloads/repository.dart';
-import '../library/repository.dart';
+import '../settings/repository.dart';
 import '../player/pages/mini.dart';
 import '../player/services/playback_queue.dart';
 import '../player/services/controller.dart';
@@ -59,7 +59,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
   Future<void> _loadSubscriptionState() async {
     try {
       final subscribed = await ref
-          .read(libraryRepositoryProvider)
+          .read(settingsRepositoryProvider)
           .isSubscribed(widget.series.id);
       if (mounted) {
         setState(() {
@@ -71,7 +71,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
       AppLogger.failure(
         'load_subscription_state',
         error,
-        area: 'library',
+        area: 'settings',
         stackTrace: stackTrace,
         data: {'seriesId': widget.series.id},
       );
@@ -121,8 +121,8 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
           _loadingEpisodes = false;
         });
       }
-      if (await ref.read(libraryRepositoryProvider).isSubscribed(series.id)) {
-        await ref.read(libraryRepositoryProvider).subscribe(series);
+      if (await ref.read(settingsRepositoryProvider).isSubscribed(series.id)) {
+        await ref.read(settingsRepositoryProvider).subscribe(series);
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
@@ -177,8 +177,8 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
           _loadingMoreEpisodes = false;
         });
       }
-      if (await ref.read(libraryRepositoryProvider).isSubscribed(loaded.id)) {
-        await ref.read(libraryRepositoryProvider).subscribe(loaded);
+      if (await ref.read(settingsRepositoryProvider).isSubscribed(loaded.id)) {
+        await ref.read(settingsRepositoryProvider).subscribe(loaded);
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
@@ -209,17 +209,17 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
     try {
       AppLogger.userAction(
         'subscribe_series',
-        area: 'library',
+        area: 'settings',
         data: {
           'seriesId': series.id,
           'title': series.title,
           'episodeCount': series.episodes.length,
         },
       );
-      await ref.read(libraryRepositoryProvider).subscribe(series);
+      await ref.read(settingsRepositoryProvider).subscribe(series);
       AppLogger.result(
         'subscribe_series',
-        area: 'library',
+        area: 'settings',
         data: {'seriesId': series.id, 'title': series.title},
       );
       if (mounted) {

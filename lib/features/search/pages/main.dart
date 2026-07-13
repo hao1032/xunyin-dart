@@ -15,11 +15,11 @@ class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({
     super.key,
     this.showMiniPlayer = true,
-    this.showLibraryAction = true,
+    this.showSettingsAction = true,
   });
 
   final bool showMiniPlayer;
-  final bool showLibraryAction;
+  final bool showSettingsAction;
 
   @override
   ConsumerState<SearchPage> createState() => _SearchPageState();
@@ -137,14 +137,14 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('发现'),
-        actions: widget.showLibraryAction
+        actions: widget.showSettingsAction
             ? [
                 IconButton(
-                  tooltip: '资料库',
-                  icon: const Icon(Icons.library_music_outlined),
+                  tooltip: '设置',
+                  icon: const Icon(Icons.settings_outlined),
                   onPressed: () {
-                    AppLogger.userAction('open_library', area: 'library');
-                    context.push('/library');
+                    AppLogger.userAction('open_settings', area: 'settings');
+                    context.push('/settings');
                   },
                 ),
               ]

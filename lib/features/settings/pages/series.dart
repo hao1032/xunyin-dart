@@ -26,11 +26,11 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
 
   Future<List<Series>> _loadSubscriptions() async {
     final subscriptions = await ref
-        .read(libraryRepositoryProvider)
+        .read(settingsRepositoryProvider)
         .subscriptions();
     AppLogger.result(
       'load_subscriptions',
-      area: 'library',
+      area: 'settings',
       data: {'subscriptionCount': subscriptions.length},
     );
     return subscriptions;
@@ -43,7 +43,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('我的系列')),
+      appBar: AppBar(title: const Text('频道')),
       body: Column(
         children: [
           Expanded(
@@ -78,7 +78,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
                       onTap: () {
                         AppLogger.userAction(
                           'open_subscription',
-                          area: 'library',
+                          area: 'settings',
                           data: {
                             'seriesId': series.id,
                             'title': series.title,
@@ -100,7 +100,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
   }
 
   Future<void> _unsubscribe(Series series) async {
-    await ref.read(libraryRepositoryProvider).unsubscribe(series.id);
+    await ref.read(settingsRepositoryProvider).unsubscribe(series.id);
     if (!mounted) return;
     _reload();
     ScaffoldMessenger.of(
@@ -132,7 +132,7 @@ class _EmptySeries extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(height: 18),
-            Text('还没有节目', style: Theme.of(context).textTheme.titleLarge),
+            Text('还没有频道', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             const Text(
               '搜索 B站内容或播客，然后订阅合集、UP主或 RSS 播客。',

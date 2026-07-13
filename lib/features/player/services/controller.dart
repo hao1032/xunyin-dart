@@ -7,7 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../../core/app_logger.dart';
 import '../../downloads/repository.dart';
 import '../../episode/playback_info.dart';
-import '../../library/repository.dart';
+import '../../settings/repository.dart';
 import '../../episode/model.dart';
 import 'playback_queue.dart';
 
@@ -22,7 +22,7 @@ final playbackControllerProvider = Provider<PlaybackController>((ref) {
     ref.watch(appPlayerProvider),
     ref.watch(episodePlaybackInfoProvider),
     ref.watch(episodeDownloadRepositoryProvider),
-    ref.watch(libraryRepositoryProvider),
+    ref.watch(settingsRepositoryProvider),
     ref.watch(playbackQueueProvider.notifier),
   );
   ref.onDispose(controller.dispose);
@@ -34,7 +34,7 @@ class PlaybackController {
     this._player,
     this._playbackInfo,
     this._downloadRepository,
-    this._library,
+    this._settings,
     this._queue,
   ) {
     _playerStateSubscription = _player.playerStateStream.listen(
@@ -49,7 +49,7 @@ class PlaybackController {
   final AudioPlayer _player;
   final EpisodePlaybackInfoProvider _playbackInfo;
   final EpisodeDownloadRepository _downloadRepository;
-  final LibraryRepository _library;
+  final SettingsRepository _settings;
   final PlaybackQueueController? _queue;
   StreamSubscription<PlayerState>? _playerStateSubscription;
   Timer? _positionTimer;
@@ -120,7 +120,7 @@ class PlaybackController {
         _currentEpisode = episode;
         _lastSavedPosition = null;
         await _seekToSavedPosition(episode);
-        await _library.recordPlayback(episode);
+        await _settings.recordPlayback(episode);
         _startPositionTimer();
         unawaited(
           _player.play().catchError((Object error, StackTrace stackTrace) {
@@ -155,7 +155,7 @@ class PlaybackController {
       _currentEpisode = episode;
       _lastSavedPosition = null;
       await _seekToSavedPosition(episode);
-      await _library.recordPlayback(episode);
+      await _settings.recordPlayback(episode);
       _startPositionTimer();
       unawaited(
         _player.play().catchError((Object error, StackTrace stackTrace) {
@@ -190,11 +190,11 @@ class PlaybackController {
   }
 
   Future<void> _seekToSavedPosition(Episode episode) async {
-    final saved = await _library.playbackPosition(episode.id);
+    final saved = await _settings.playbackPosition(episode.id);
     if (saved == null || saved < _minimumResumePosition) return;
     final duration = _player.duration ?? episode.duration;
     if (duration != null && duration - saved <= _completedThreshold) {
-      await _library.clearPlaybackPosition(episode);
+      await _settings.clearPlaybackPosition(episode);
       return;
     }
     await _player.seek(saved);
@@ -228,7 +228,7 @@ class PlaybackController {
 
   Future<void> _handleCompletedEpisode(Episode episode) async {
     try {
-      await _library.clearPlaybackPosition(episode);
+      await _settings.clearPlaybackPosition(episode);
       final nextEpisode = _queue?.playNextAfter(episode);
       if (nextEpisode == null) {
         AppLogger.result(
@@ -271,11 +271,11 @@ class PlaybackController {
     if (_lastSavedPosition == position) return;
     final duration = _player.duration ?? episode.duration;
     if (duration != null && duration - position <= _completedThreshold) {
-      await _library.clearPlaybackPosition(episode);
+      await _settings.clearPlaybackPosition(episode);
       _lastSavedPosition = null;
       return;
     }
-    await _library.savePlaybackPosition(episode, position);
+    await _settings.savePlaybackPosition(episode, position);
     _lastSavedPosition = position;
     AppLogger.result(
       'autosave_playback_position',

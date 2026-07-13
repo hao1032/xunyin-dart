@@ -6,10 +6,10 @@ import '../../../core/app_logger.dart';
 import '../../../core/display_formatters.dart';
 import '../../../shared/wigets/app_list_item.dart';
 import '../../downloads/repository.dart';
-import '../../player/services/playback_queue.dart';
-import '../../player/services/controller.dart';
-import '../../player/pages/mini.dart';
 import '../../episode/model.dart';
+import '../../player/pages/mini.dart';
+import '../../player/services/controller.dart';
+import '../../player/services/playback_queue.dart';
 import '../repository.dart';
 
 class HistoryPage extends ConsumerStatefulWidget {
@@ -32,10 +32,10 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   }
 
   Future<List<Episode>> _loadHistory() async {
-    final history = await ref.read(libraryRepositoryProvider).history();
+    final history = await ref.read(settingsRepositoryProvider).history();
     AppLogger.result(
       'load_history',
-      area: 'library',
+      area: 'settings',
       data: {'historyCount': history.length},
     );
     return history;
@@ -102,7 +102,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                       onTap: () {
                         AppLogger.userAction(
                           'open_history_episode',
-                          area: 'library',
+                          area: 'settings',
                           data: {
                             'episodeId': episode.id,
                             'title': episode.title,

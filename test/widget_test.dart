@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xunyin_dart/core/app.dart';
 
 void main() {
-  testWidgets('home shell exposes play, discovery and library', (tester) async {
+  testWidgets('home shell exposes play, discovery and settings', (
+    tester,
+  ) async {
     await tester.pumpWidget(const ProviderScope(child: XunyinApp()));
 
     expect(find.text('播放列表'), findsAtLeastNWidgets(1));
     expect(find.text('发现'), findsOneWidget);
-    expect(find.text('资料库'), findsOneWidget);
+    expect(find.text('设置'), findsOneWidget);
 
     await tester.tap(find.text('发现'));
     await tester.pumpAndSettle();
