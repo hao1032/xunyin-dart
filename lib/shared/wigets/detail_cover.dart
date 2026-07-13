@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_constants.dart';
 import 'cached_cover_image.dart';
 
 class AppDetailCover extends StatelessWidget {
   const AppDetailCover({
     super.key,
     required this.url,
-    this.icon = Icons.podcasts,
-    this.borderRadius = 10,
+    this.icon = AppIcons.podcast,
+    this.borderRadius = AppRadii.lg,
     this.maxContentWidth = 520,
     this.horizontalPadding = 48,
     this.heightFactor = 0.32,

@@ -8,14 +8,14 @@ class AppDetail extends StatelessWidget {
     super.key,
     required this.title,
     this.coverUrl,
-    this.coverIcon = Icons.podcasts,
+    this.coverIcon = AppIcons.podcast,
     this.coverMaxContentWidth = 520,
     this.metadata,
     this.subtitle,
     this.actions,
     this.actionStatus,
     this.description,
-    this.descriptionTitle = '简介',
+    this.descriptionTitle = AppText.descriptionTitle,
     this.children = const [],
   });
 
@@ -41,10 +41,10 @@ class AppDetail extends StatelessWidget {
           icon: coverIcon,
           maxContentWidth: coverMaxContentWidth,
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: AppSpacing.xl + 2),
         Text(title, style: Theme.of(context).textTheme.headlineSmall),
         if (metadata != null && metadata!.isNotEmpty) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           Text(
             metadata!,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -52,16 +52,22 @@ class AppDetail extends StatelessWidget {
             ),
           ),
         ],
-        if (subtitle != null) ...[const SizedBox(height: 10), subtitle!],
-        if (actions != null) ...[const SizedBox(height: 22), actions!],
+        if (subtitle != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          subtitle!,
+        ],
+        if (actions != null) ...[
+          const SizedBox(height: AppSpacing.xl + 2),
+          actions!,
+        ],
         if (actionStatus != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.item),
           actionStatus!,
         ],
         if (description != null && description!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.section),
           AppSectionTitle(title: descriptionTitle),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           Text(description!, style: const TextStyle(height: 1.6)),
         ],
         ...children,
@@ -97,27 +103,36 @@ class AppDetailEpisodeList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 20),
-        AppSectionTitle(title: title, subtitle: loading ? '正在加载' : subtitle),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.xl),
+        AppSectionTitle(
+          title: title,
+          subtitle: loading ? AppText.loadingContent : subtitle,
+        ),
+        const SizedBox(height: AppSpacing.md),
         if (loading)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
             child: Center(child: CircularProgressIndicator()),
           ),
         if (error != null)
           Card(
             child: ListTile(
-              leading: const Icon(Icons.error_outline),
+              leading: const Icon(AppIcons.error),
               title: Text(errorTitle ?? '$title加载失败'),
               subtitle: Text(error.toString()),
               trailing: onRetry == null
                   ? null
-                  : TextButton(onPressed: onRetry, child: const Text('重试')),
+                  : TextButton(
+                      onPressed: onRetry,
+                      child: const Text(AppText.retry),
+                    ),
             ),
           ),
         ...children,
-        if (footer != null) ...[const SizedBox(height: 12), footer!],
+        if (footer != null) ...[
+          const SizedBox(height: AppSpacing.item),
+          footer!,
+        ],
       ],
     );
   }

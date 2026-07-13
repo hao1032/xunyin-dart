@@ -131,12 +131,12 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppPageBar(
-        title: '发现',
+        title: AppText.discoverTitle,
         actions: widget.showSettingsAction
             ? [
                 IconButton(
-                  tooltip: '设置',
-                  icon: const Icon(Icons.settings_outlined),
+                  tooltip: AppText.settings,
+                  icon: const Icon(AppIcons.settings),
                   onPressed: () {
                     AppLogger.userAction('open_settings', area: 'settings');
                     context.push('/settings');
@@ -148,7 +148,12 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
       body: Column(
         children: [
           AppContent(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              AppSpacing.xs,
+              AppSpacing.page,
+              AppSpacing.item,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -156,17 +161,17 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                   controller: _controller,
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    hintText: '搜索视频、UP主或播客',
-                    prefixIcon: const Icon(Icons.search_rounded),
+                    hintText: AppText.searchHint,
+                    prefixIcon: const Icon(AppIcons.search),
                     suffixIcon: IconButton(
-                      tooltip: '搜索',
-                      icon: const Icon(Icons.arrow_forward_rounded),
+                      tooltip: AppText.search,
+                      icon: const Icon(AppIcons.submit),
                       onPressed: () => _search(),
                     ),
                   ),
                   onSubmitted: (_) => _search(),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.item),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SegmentedButton<SearchScope>(
@@ -194,7 +199,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
               ],
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Expanded(
             child: _results.when(
               data: (results) {
@@ -204,14 +209,23 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                 return Align(
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
+                    constraints: const BoxConstraints(
+                      maxWidth: AppSizes.contentMaxWidth,
+                    ),
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.page,
+                        0,
+                        AppSpacing.page,
+                        AppSpacing.xxl,
+                      ),
                       children: [
                         if (results.isEmpty) const _SearchEmpty(),
                         ...results.map((result) {
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.xxs,
+                            ),
                             child: _SearchResultTile(
                               result: result,
                               enabled: _canOpen(result),
@@ -253,17 +267,22 @@ class _SearchWelcome extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return ListView(
-      padding: EdgeInsets.zero,
+      padding: AppInsets.zero,
       children: [
         AppContent(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
+            AppSpacing.lg,
+            AppSpacing.page,
+            AppSpacing.section,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(AppSpacing.xxl),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
                   gradient: LinearGradient(
                     colors: [
                       colors.primaryContainer,
@@ -276,14 +295,14 @@ class _SearchWelcome extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.waves_rounded, size: 40),
-                    const SizedBox(height: 32),
+                    const Icon(AppIcons.waves, size: 40),
+                    const SizedBox(height: AppSpacing.emptyState),
                     Text(
                       '找到值得听的声音',
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     const Text('从 B站长内容到 RSS 播客，统一整理成你的收听订阅。'),
                   ],
                 ),
@@ -298,19 +317,19 @@ class _SearchWelcome extends StatelessWidget {
                 child: Column(
                   children: const [
                     _SourceHint(
-                      icon: Icons.video_library_rounded,
+                      icon: AppIcons.videoLibrary,
                       title: 'B站合集',
                       subtitle: '把系列视频作为一个合集持续收听',
                     ),
                     Divider(indent: 64),
                     _SourceHint(
-                      icon: Icons.person_rounded,
+                      icon: AppIcons.userRounded,
                       title: 'B站UP主',
                       subtitle: '按创作者浏览和订阅内容',
                     ),
                     Divider(indent: 64),
                     _SourceHint(
-                      icon: Icons.podcasts_rounded,
+                      icon: AppIcons.podcasts,
                       title: 'RSS播客',
                       subtitle: '搜索节目并加载完整 RSS 单集',
                     ),
@@ -355,27 +374,27 @@ class _SearchPager extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(top: AppSpacing.md),
       child: Row(
         children: [
           Expanded(
             child: FilledButton.tonalIcon(
-              icon: const Icon(Icons.navigate_before),
+              icon: const Icon(AppIcons.back),
               label: const Text('上一页'),
               onPressed: loading ? null : onPrevious,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.item),
           loading
               ? const SizedBox.square(
-                  dimension: 18,
+                  dimension: AppSizes.indicator,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : Text('第 $page 页'),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.item),
           Expanded(
             child: FilledButton.tonalIcon(
-              icon: const Icon(Icons.navigate_next),
+              icon: const Icon(AppIcons.next),
               label: const Text('下一页'),
               onPressed: loading || !hasNextPage ? null : onNext,
             ),
@@ -402,13 +421,16 @@ class _SourceHint extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return ListTile(
       minTileHeight: 72,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xxs,
+      ),
       leading: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
           color: colors.secondaryContainer,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
         ),
         child: Icon(icon, size: 21, color: colors.onSecondaryContainer),
       ),
@@ -443,7 +465,7 @@ class _SearchResultTile extends StatelessWidget {
       onTap: onTap,
       actions: [
         Icon(
-          enabled ? Icons.chevron_right : Icons.block,
+          enabled ? AppIcons.chevronRight : AppIcons.blocked,
           color: enabled
               ? Theme.of(context).colorScheme.onSurfaceVariant
               : Theme.of(context).disabledColor,

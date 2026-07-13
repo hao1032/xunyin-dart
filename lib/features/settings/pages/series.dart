@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/app_logger.dart';
+import '../../../core/app_constants.dart';
 import '../../../shared/wigets/app_bar.dart';
 import '../../../shared/wigets/app_list_item.dart';
 import '../../series/model.dart';
@@ -58,7 +59,12 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
                   return const _EmptySeries();
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.xs,
+                    AppSpacing.lg,
+                    AppSpacing.xxl,
+                  ),
                   itemCount: subscriptions.length,
                   itemBuilder: (context, index) {
                     final series = subscriptions[index];
@@ -70,10 +76,10 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
                       actions: [
                         IconButton(
                           tooltip: '取消订阅',
-                          icon: const Icon(Icons.remove_circle_outline_rounded),
+                          icon: const Icon(AppIcons.remove),
                           onPressed: () => _unsubscribe(series),
                         ),
-                        const Icon(Icons.chevron_right_rounded),
+                        const Icon(AppIcons.chevronRight),
                       ],
                       onTap: () {
                         AppLogger.userAction(
@@ -108,9 +114,9 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
   }
 
   IconData _seriesIcon(Series series) => switch (series) {
-    BilibiliCollectionSeries() => Icons.video_library_rounded,
-    BilibiliCreatorSeries() => Icons.person_rounded,
-    RssPodcastSeries() => Icons.podcasts_rounded,
+    BilibiliCollectionSeries() => AppIcons.videoLibrary,
+    BilibiliCreatorSeries() => AppIcons.userRounded,
+    RssPodcastSeries() => AppIcons.podcasts,
   };
 }
 
@@ -121,18 +127,18 @@ class _EmptySeries extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: AppInsets.emptyState,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.rss_feed_rounded,
+              AppIcons.rss,
               size: 56,
               color: Theme.of(context).colorScheme.primary,
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSizes.indicator),
             Text('还没有订阅', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             const Text(
               '搜索 B站内容或播客，然后订阅合集、UP主或 RSS 播客。',
               textAlign: TextAlign.center,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/app_logger.dart';
 import '../services/controller.dart';
 import '../services/playback_queue.dart';
@@ -47,7 +48,7 @@ class MiniPlayer extends ConsumerWidget {
         );
         if (expand) return SizedBox(width: double.infinity, child: surface);
         return Padding(
-          padding: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: AppSpacing.sm),
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: adaptiveWidth),
             child: surface,
@@ -75,7 +76,7 @@ class _MiniPlayerSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Material(
-      color: Colors.transparent,
+      color: AppColors.transparent,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
@@ -86,7 +87,7 @@ class _MiniPlayerSurface extends StatelessWidget {
           height: 40,
           child: Row(
             children: [
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: _MarqueeTitle(
                   title: title,
@@ -95,24 +96,22 @@ class _MiniPlayerSurface extends StatelessWidget {
                   ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
-              const SizedBox(width: 2),
+              const SizedBox(width: AppSpacing.xxs),
               SizedBox.square(
                 dimension: 40,
                 child: IconButton(
-                  tooltip: loading ? '加载中' : (playing ? '暂停' : '播放'),
+                  tooltip: loading
+                      ? AppText.loading
+                      : (playing ? AppText.pause : AppText.play),
                   icon: loading
                       ? SizedBox.square(
-                          dimension: 18,
+                          dimension: AppSizes.indicator,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.2,
                             color: colors.primary,
                           ),
                         )
-                      : Icon(
-                          playing
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                        ),
+                      : Icon(playing ? AppIcons.pause : AppIcons.playRounded),
                   onPressed: loading ? null : onToggle,
                 ),
               ),

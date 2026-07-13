@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_constants.dart';
+
 class AppActionCard extends StatelessWidget {
   const AppActionCard({
     super.key,
@@ -10,7 +12,7 @@ class AppActionCard extends StatelessWidget {
     this.trailing,
     this.iconBackgroundColor,
     this.iconColor,
-    this.contentPadding = const EdgeInsets.all(14),
+    this.contentPadding = AppInsets.actionCard,
   });
 
   final IconData icon;
@@ -27,25 +29,25 @@ class AppActionCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         onTap: onTap,
         child: Padding(
           padding: contentPadding,
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: AppSizes.actionIconBox,
+                height: AppSizes.actionIconBox,
                 decoration: BoxDecoration(
                   color: iconBackgroundColor ?? colors.secondaryContainer,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
                 ),
                 child: Icon(
                   icon,
                   color: iconColor ?? colors.onSecondaryContainer,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: AppSpacing.item + 2),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,7 +56,7 @@ class AppActionCard extends StatelessWidget {
                       title,
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: AppSpacing.xs - 1),
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -65,10 +67,7 @@ class AppActionCard extends StatelessWidget {
                 ),
               ),
               trailing ??
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: colors.onSurfaceVariant,
-                  ),
+                  Icon(AppIcons.chevronRight, color: colors.onSurfaceVariant),
             ],
           ),
         ),

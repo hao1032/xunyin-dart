@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 
-abstract final class AppTheme {
-  static const _seed = Color(0xff6750a4);
-  static const _buttonRadius = 8.0;
-  static const _buttonMinSize = Size(48, 48);
-  static const _iconButtonMinSize = Size.square(48);
+import 'app_constants.dart';
 
+abstract final class AppTheme {
   static ThemeData light() => _theme(Brightness.light);
 
   static ThemeData dark() => _theme(Brightness.dark);
 
   static ThemeData _theme(Brightness brightness) {
     final colors = ColorScheme.fromSeed(
-      seedColor: _seed,
+      seedColor: AppColors.seed,
       brightness: brightness,
       dynamicSchemeVariant: DynamicSchemeVariant.neutral,
     );
@@ -44,7 +41,7 @@ abstract final class AppTheme {
       appBarTheme: AppBarTheme(
         centerTitle: false,
         scrolledUnderElevation: 0,
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         titleTextStyle: TextStyle(
           color: colors.onSurface,
           fontSize: 24,
@@ -57,7 +54,7 @@ abstract final class AppTheme {
         margin: EdgeInsets.zero,
         color: colors.surfaceContainerLowest,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           side: BorderSide(color: colors.outlineVariant.withValues(alpha: .65)),
         ),
       ),
@@ -66,20 +63,17 @@ abstract final class AppTheme {
         fillColor: colors.surfaceContainer,
         border: OutlineInputBorder(
           borderSide: BorderSide.none,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.md),
         ),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide.none,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.md),
         ),
         focusedBorder: OutlineInputBorder(
           borderSide: BorderSide(color: colors.primary, width: 1.5),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.md),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 14,
-        ),
+        contentPadding: AppInsets.input,
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 68,
@@ -97,40 +91,38 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: _buttonMinSize,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          minimumSize: AppSizes.buttonMin,
+          padding: AppInsets.button,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_buttonRadius),
+            borderRadius: BorderRadius.circular(AppRadii.md),
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: _buttonMinSize,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          minimumSize: AppSizes.buttonMin,
+          padding: AppInsets.button,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_buttonRadius),
+            borderRadius: BorderRadius.circular(AppRadii.md),
           ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          minimumSize: _buttonMinSize,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          minimumSize: AppSizes.buttonMin,
+          padding: AppInsets.button,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_buttonRadius),
+            borderRadius: BorderRadius.circular(AppRadii.md),
           ),
         ),
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
-          minimumSize: const WidgetStatePropertyAll(_buttonMinSize),
-          padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
+          minimumSize: const WidgetStatePropertyAll(AppSizes.buttonMin),
+          padding: const WidgetStatePropertyAll(AppInsets.button),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_buttonRadius),
+              borderRadius: BorderRadius.circular(AppRadii.md),
             ),
           ),
           side: WidgetStatePropertyAll(
@@ -140,10 +132,10 @@ abstract final class AppTheme {
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
-          minimumSize: _iconButtonMinSize,
-          padding: const EdgeInsets.all(8),
+          minimumSize: AppSizes.iconButtonMin,
+          padding: AppInsets.iconButton,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_buttonRadius),
+            borderRadius: BorderRadius.circular(AppRadii.md),
           ),
         ),
       ),
@@ -154,7 +146,9 @@ abstract final class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+        ),
       ),
     );
   }

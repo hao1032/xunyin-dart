@@ -27,11 +27,14 @@ class PlayerPage extends ConsumerWidget {
         ? null
         : plainTextOrNull(episode.description) ?? '暂无简介';
     return Scaffold(
-      appBar: const AppPageBar(title: '正在播放', showMiniPlayer: false),
+      appBar: const AppPageBar(
+        title: AppText.nowPlayingTitle,
+        showMiniPlayer: false,
+      ),
       body: episode == null
           ? const Center(child: Text('还没有正在播放的内容'))
           : ListView(
-              padding: EdgeInsets.zero,
+              padding: AppInsets.zero,
               children: [
                 AppContent(
                   maxWidth: 520,
@@ -42,7 +45,7 @@ class PlayerPage extends ConsumerWidget {
                       AppDetail(
                         title: episode.title,
                         coverUrl: episode.imageUrl,
-                        coverIcon: Icons.music_note,
+                        coverIcon: AppIcons.music,
                         subtitle: _PlayerMetadata(
                           episode: episode,
                           queue: queue,
@@ -50,7 +53,7 @@ class PlayerPage extends ConsumerWidget {
                               _openSeries(context, ref, episode, queue),
                         ),
                         children: [
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppSpacing.xxl),
                           Card(
                             child: Padding(
                               padding: const EdgeInsets.fromLTRB(
@@ -62,7 +65,7 @@ class PlayerPage extends ConsumerWidget {
                               child: _PlayerProgress(player: player),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AppSpacing.xl),
                           StreamBuilder<PlayerState>(
                             stream: player.playerStateStream,
                             builder: (context, snapshot) {
@@ -73,15 +76,17 @@ class PlayerPage extends ConsumerWidget {
                                   IconButton.filledTonal(
                                     tooltip: '后退 15 秒',
                                     iconSize: 26,
-                                    icon: const Icon(Icons.replay_10),
+                                    icon: const Icon(AppIcons.replay10),
                                     onPressed: () => _seekRelative(player, -15),
                                   ),
-                                  const SizedBox(width: 24),
+                                  const SizedBox(width: AppSpacing.xxl),
                                   IconButton.filled(
-                                    tooltip: playing ? '暂停' : '播放',
+                                    tooltip: playing
+                                        ? AppText.pause
+                                        : AppText.play,
                                     iconSize: 38,
                                     icon: Icon(
-                                      playing ? Icons.pause : Icons.play_arrow,
+                                      playing ? AppIcons.pause : AppIcons.play,
                                     ),
                                     onPressed: () {
                                       AppLogger.userAction(
@@ -93,11 +98,11 @@ class PlayerPage extends ConsumerWidget {
                                       playing ? player.pause() : player.play();
                                     },
                                   ),
-                                  const SizedBox(width: 24),
+                                  const SizedBox(width: AppSpacing.xxl),
                                   IconButton.filledTonal(
                                     tooltip: '前进 15 秒',
                                     iconSize: 26,
-                                    icon: const Icon(Icons.forward_10),
+                                    icon: const Icon(AppIcons.forward10),
                                     onPressed: () => _seekRelative(player, 15),
                                   ),
                                 ],
@@ -105,8 +110,10 @@ class PlayerPage extends ConsumerWidget {
                             },
                           ),
                           const SizedBox(height: AppSpacing.section),
-                          const AppSectionTitle(title: '简介'),
-                          const SizedBox(height: 10),
+                          const AppSectionTitle(
+                            title: AppText.descriptionTitle,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
                           Text(
                             description!,
                             style: const TextStyle(height: 1.6),
@@ -208,7 +215,7 @@ class _PlayerMetadata extends StatelessWidget {
           Text('·', style: style),
         ],
         InkWell(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(AppRadii.xs),
           onTap: onPodcastTap,
           child: Text('播客：${_podcastName()}', style: linkStyle),
         ),

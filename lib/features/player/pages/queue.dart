@@ -32,7 +32,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
     final queue = ref.watch(playbackQueueProvider);
     final player = ref.watch(appPlayerProvider);
     return Scaffold(
-      appBar: const AppPageBar(title: '播放'),
+      appBar: const AppPageBar(title: AppText.playlistTitle),
       body: Column(
         children: [
           Expanded(
@@ -49,9 +49,15 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                 return queue.items.isEmpty
                     ? const _EmptyQueue()
                     : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.page,
+                          AppSpacing.xs,
+                          AppSpacing.page,
+                          AppSpacing.xl,
+                        ),
                         itemCount: queue.items.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 4),
+                        separatorBuilder: (_, _) =>
+                            const SizedBox(height: AppSpacing.xs),
                         itemBuilder: (context, index) {
                           final entry = queue.items[index];
                           final selected =
@@ -100,8 +106,10 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                                     _playingRequestEpisodeId == episode.id ||
                                     itemLoading,
                                 tooltip: active
-                                    ? '暂停'
-                                    : (itemLoading ? '加载中' : '播放'),
+                                    ? AppText.pause
+                                    : (itemLoading
+                                          ? AppText.loading
+                                          : AppText.play),
                                 onPressed: active
                                     ? () =>
                                           _pauseFromQueue(episode, index: index)
@@ -271,7 +279,7 @@ class _EmptyQueue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AppEmptyState(
-      icon: Icons.queue_music_rounded,
+      icon: AppIcons.queue,
       title: '播放列表还是空的',
       message: '去发现页找一段想听的内容，单集和整个系列都可以加入这里。',
     );
@@ -342,14 +350,19 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
         .toDouble();
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 3),
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs - 1),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.item,
+                AppSpacing.sm,
+                AppSpacing.sm,
+                AppSpacing.sm,
+              ),
               child: Row(
                 children: [
                   Stack(
@@ -358,7 +371,7 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                       AppCover(
                         url: firstEpisode.imageUrl,
                         size: 52,
-                        icon: Icons.podcasts,
+                        icon: AppIcons.podcast,
                       ),
                       Positioned(
                         right: -4,
@@ -366,7 +379,7 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             color: colors.primaryContainer,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(AppRadii.xs),
                             border: Border.all(
                               color: colors.surfaceContainerLowest,
                               width: 2,
@@ -390,7 +403,7 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                       ),
                     ],
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: AppSpacing.item + 2),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,7 +416,7 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                                 height: 1.25,
                               ),
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: AppSpacing.xs + 1),
                         Text(
                           subtitle,
                           maxLines: 1,
@@ -412,7 +425,7 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                               ?.copyWith(color: colors.onSurfaceVariant),
                         ),
                         if (currentIndex >= 0) ...[
-                          const SizedBox(height: 6),
+                          const SizedBox(height: AppSpacing.sm - 2),
                           Text(
                             '正在播放第 ${currentIndex + 1} 集',
                             maxLines: 1,
@@ -427,15 +440,15 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xs),
                   _QueuePlayButton(
                     playing: widget.playing,
                     loading:
                         widget.busyEpisodeId == playableEpisode.id ||
                         widget.loading,
                     tooltip: widget.playing
-                        ? '暂停'
-                        : (widget.loading ? '加载中' : '播放系列'),
+                        ? AppText.pause
+                        : (widget.loading ? AppText.loading : '播放系列'),
                     onPressed: widget.playing
                         ? widget.onPause
                         : () => widget.onPlayEpisode(
@@ -461,12 +474,17 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                       ColoredBox(
                         color: colors.surfaceContainer.withValues(alpha: .42),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.sm,
+                            AppSpacing.xs,
+                            AppSpacing.sm,
+                            AppSpacing.sm - 2,
+                          ),
                           child: SizedBox(
                             height: episodeListHeight,
                             child: ListView.builder(
                               primary: false,
-                              padding: EdgeInsets.zero,
+                              padding: AppInsets.zero,
                               itemCount:
                                   widget.entry.episodes.length +
                                   (widget.canLoadMore ? 1 : 0),
@@ -474,23 +492,25 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                                 if (episodeIndex >=
                                     widget.entry.episodes.length) {
                                   return Padding(
-                                    padding: const EdgeInsets.only(top: 4),
+                                    padding: const EdgeInsets.only(
+                                      top: AppSpacing.xs,
+                                    ),
                                     child: SizedBox(
                                       width: double.infinity,
                                       child: OutlinedButton.icon(
                                         icon: widget.loadingMore
                                             ? const SizedBox.square(
-                                                dimension: 16,
+                                                dimension: AppSpacing.lg,
                                                 child:
                                                     CircularProgressIndicator(
                                                       strokeWidth: 2,
                                                     ),
                                               )
-                                            : const Icon(
-                                                Icons.expand_more_rounded,
-                                              ),
+                                            : const Icon(AppIcons.expandMore),
                                         label: Text(
-                                          widget.loadingMore ? '加载中' : '加载更多',
+                                          widget.loadingMore
+                                              ? AppText.loading
+                                              : AppText.loadingMore,
                                         ),
                                         onPressed: widget.loadingMore
                                             ? null
@@ -576,13 +596,18 @@ class _SeriesEpisodeTile extends StatelessWidget {
       child: Material(
         color: current
             ? colors.primaryContainer.withValues(alpha: .58)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
+            : AppColors.transparent,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
         child: InkWell(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
           onTap: onPlay,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 5, 4, 5),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.sm,
+              AppSpacing.xs + 1,
+              AppSpacing.xs,
+              AppSpacing.xs + 1,
+            ),
             child: Row(
               children: [
                 SizedBox(
@@ -596,13 +621,9 @@ class _SeriesEpisodeTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                AppCover(
-                  url: episode.imageUrl,
-                  size: 38,
-                  icon: Icons.music_note,
-                ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpacing.sm),
+                AppCover(url: episode.imageUrl, size: 38, icon: AppIcons.music),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -616,7 +637,7 @@ class _SeriesEpisodeTile extends StatelessWidget {
                         ),
                       ),
                       if (metadata.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: AppSpacing.xxs),
                         Text(
                           metadata,
                           maxLines: 1,
@@ -628,11 +649,13 @@ class _SeriesEpisodeTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
                 _QueuePlayButton(
                   playing: playing,
                   loading: loading,
-                  tooltip: playing ? (loading ? '加载中' : '暂停') : '播放',
+                  tooltip: playing
+                      ? (loading ? AppText.loading : AppText.pause)
+                      : AppText.play,
                   onPressed: playing ? onPause : onPlay,
                 ),
               ],
@@ -660,15 +683,15 @@ class _QueuePlayButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: loading ? '加载中' : tooltip,
+      tooltip: loading ? AppText.loading : tooltip,
       icon: loading
           ? const SizedBox.square(
-              dimension: 18,
+              dimension: AppSizes.indicator,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : playing
-          ? const Icon(Icons.pause_rounded)
-          : const Icon(Icons.play_arrow_rounded),
+          ? const Icon(AppIcons.pause)
+          : const Icon(AppIcons.playRounded),
       onPressed: loading ? null : onPressed,
     );
   }

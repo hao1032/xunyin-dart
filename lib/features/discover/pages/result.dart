@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_constants.dart';
 import '../../../core/app_logger.dart';
 import '../../../shared/wigets/app_bar.dart';
 import '../../series/model.dart';
@@ -116,20 +117,20 @@ class _DiscoverResultPageState extends ConsumerState<DiscoverResultPage> {
             appBar: AppPageBar(title: widget.result.sourceType.label),
             body: Center(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(AppSpacing.xxl),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, size: 40),
-                    const SizedBox(height: 12),
+                    const Icon(AppIcons.error, size: 40),
+                    const SizedBox(height: AppSpacing.item),
                     Text(
                       snapshot.error.toString(),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     FilledButton.icon(
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('重试'),
+                      icon: const Icon(AppIcons.refresh),
+                      label: const Text(AppText.retry),
                       onPressed: () {
                         setState(() => _loadFuture = _load());
                       },

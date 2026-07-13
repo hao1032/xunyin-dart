@@ -108,7 +108,7 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
         setState(() => _downloadedEpisode = downloaded);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('已下载到本地')));
+        ).showSnackBar(const SnackBar(content: Text(AppText.downloadedLocal)));
       }
     } catch (error, stackTrace) {
       AppLogger.failure(
@@ -143,23 +143,23 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
       if (episode.duration != null) formatDuration(episode.duration!),
     ];
     return Scaffold(
-      appBar: const AppPageBar(title: '详情'),
+      appBar: const AppPageBar(title: AppText.detailTitle),
       body: Column(
         children: [
           Expanded(
             child: ListView(
-              padding: EdgeInsets.zero,
+              padding: AppInsets.zero,
               children: [
                 AppContent(
-                  maxWidth: 620,
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                  maxWidth: AppSizes.detailPageMaxWidth,
+                  padding: AppInsets.detailPage,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       AppDetail(
                         title: episode.title,
                         coverUrl: episode.imageUrl,
-                        coverIcon: Icons.music_note,
+                        coverIcon: AppIcons.music,
                         metadata: metaParts.join(' · '),
                         subtitle: relatedSeries.isNotEmpty
                             ? _RelatedSeriesLinks(
@@ -181,10 +181,14 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                               child: FilledButton.icon(
                                 icon: Icon(
                                   isQueued
-                                      ? Icons.playlist_add_check_rounded
-                                      : Icons.playlist_add,
+                                      ? AppIcons.addedToQueue
+                                      : AppIcons.addToQueue,
                                 ),
-                                label: Text(isQueued ? '已加入' : '加入列表'),
+                                label: Text(
+                                  isQueued
+                                      ? AppText.addedToQueue
+                                      : AppText.addToQueue,
+                                ),
                                 onPressed: isQueued
                                     ? null
                                     : () {
@@ -205,13 +209,15 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                                           context,
                                         ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('已加入播放列表'),
+                                            content: Text(
+                                              AppText.addedToQueueFull,
+                                            ),
                                           ),
                                         );
                                       },
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.sm),
                             IconButton.filledTonal(
                               tooltip: _downloadTooltip(),
                               icon: _downloadIcon(),
@@ -222,7 +228,7 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                                   ? null
                                   : _downloadEpisode,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.sm),
                             _EpisodePlayButton(
                               loading: _loading,
                               isCurrent: isCurrent,
@@ -258,24 +264,24 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
   Widget _downloadIcon() {
     if (_checkingDownload || _caching) {
       return const SizedBox.square(
-        dimension: 18,
+        dimension: AppSizes.indicator,
         child: CircularProgressIndicator(strokeWidth: 2),
       );
     }
     return Icon(
-      _downloadedEpisode == null
-          ? Icons.download
-          : Icons.file_download_done_rounded,
+      _downloadedEpisode == null ? AppIcons.download : AppIcons.downloadDone,
     );
   }
 
   String _downloadTooltip() {
-    if (_checkingDownload) return '检查下载';
+    if (_checkingDownload) return AppText.checkDownload;
     if (_caching) {
-      return _downloadedEpisode == null ? '下载中' : '读取下载';
+      return _downloadedEpisode == null
+          ? AppText.downloading
+          : AppText.readDownload;
     }
-    if (_downloadedEpisode == null) return '下载到本地';
-    return '已下载 (${_formatBytes(_downloadedEpisode!.bytes)})';
+    if (_downloadedEpisode == null) return AppText.download;
+    return '${AppText.downloaded} (${_formatBytes(_downloadedEpisode!.bytes)})';
   }
 
   String _formatBytes(int bytes) {
@@ -324,13 +330,15 @@ class _EpisodePlayButton extends ConsumerWidget {
         final playing = isCurrent && (state?.playing ?? player.playing);
         final busy = loading || (isCurrent && buffering && !playing);
         return IconButton.filled(
-          tooltip: busy ? '准备播放' : (playing ? '暂停' : '播放'),
+          tooltip: busy
+              ? AppText.preparingPlayback
+              : (playing ? AppText.pause : AppText.play),
           icon: busy
               ? const SizedBox.square(
-                  dimension: 18,
+                  dimension: AppSizes.indicator,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Icon(playing ? Icons.pause_rounded : Icons.play_arrow),
+              : Icon(playing ? AppIcons.pause : AppIcons.play),
           onPressed: busy ? null : (playing ? onPause : onPlay),
         );
       },
@@ -347,11 +355,11 @@ class _RelatedSeriesLinks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 4,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.xs,
       children: series.map((item) {
         return InkWell(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(AppRadii.xs),
           onTap: () {
             AppLogger.userAction(
               'open_related_series',

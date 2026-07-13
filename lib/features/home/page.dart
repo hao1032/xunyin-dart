@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_constants.dart';
 import '../discover/pages/main.dart';
 import '../player/pages/queue.dart';
 import '../settings/page.dart';
@@ -43,19 +44,19 @@ class _MainShellPageState extends ConsumerState<MainShellPage> {
           },
           destinations: const [
             NavigationDestination(
-              icon: Icon(Icons.queue_music_outlined),
-              selectedIcon: Icon(Icons.queue_music_rounded),
-              label: '播放',
+              icon: Icon(AppIcons.queueOutlined),
+              selectedIcon: Icon(AppIcons.queue),
+              label: AppText.playlistTitle,
             ),
             NavigationDestination(
-              icon: Icon(Icons.explore_outlined),
-              selectedIcon: Icon(Icons.explore_rounded),
-              label: '发现',
+              icon: Icon(AppIcons.explore),
+              selectedIcon: Icon(AppIcons.exploreSelected),
+              label: AppText.discoverTitle,
             ),
             NavigationDestination(
-              icon: Icon(Icons.settings_outlined),
-              selectedIcon: Icon(Icons.settings_rounded),
-              label: '设置',
+              icon: Icon(AppIcons.settings),
+              selectedIcon: Icon(AppIcons.settingsSelected),
+              label: AppText.settingsTitle,
             ),
           ],
         ),

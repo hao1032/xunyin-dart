@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_constants.dart';
 import 'cached_cover_image.dart';
 
 class AppListItem extends StatelessWidget {
@@ -12,7 +13,7 @@ class AppListItem extends StatelessWidget {
     this.coverSize = 56,
     this.actions = const [],
     this.onTap,
-    this.placeholderIcon = Icons.podcasts,
+    this.placeholderIcon = AppIcons.podcast,
     this.enabled = true,
     this.compact = false,
   });
@@ -32,14 +33,26 @@ class AppListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Card(
-      margin: EdgeInsets.symmetric(vertical: compact ? 2 : 5),
+      margin: EdgeInsets.symmetric(
+        vertical: compact ? AppSpacing.xxs : AppSpacing.xs + 1,
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: enabled ? onTap : null,
         child: Padding(
           padding: compact
-              ? const EdgeInsets.fromLTRB(12, 8, 12, 4)
-              : const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              ? const EdgeInsets.fromLTRB(
+                  AppSpacing.item,
+                  AppSpacing.sm,
+                  AppSpacing.item,
+                  AppSpacing.xs,
+                )
+              : const EdgeInsets.fromLTRB(
+                  AppSpacing.item,
+                  AppSpacing.md,
+                  AppSpacing.item,
+                  AppSpacing.sm - 2,
+                ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -52,7 +65,7 @@ class AppListItem extends StatelessWidget {
                     size: coverSize,
                     icon: placeholderIcon,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.item),
                   Expanded(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -70,7 +83,7 @@ class AppListItem extends StatelessWidget {
                               ),
                         ),
                         if (subtitle != null && subtitle!.isNotEmpty) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxs),
                           Text(
                             subtitle!,
                             maxLines: 2,
@@ -90,7 +103,7 @@ class AppListItem extends StatelessWidget {
                 ],
               ),
               if (metadata.isNotEmpty || actions.isNotEmpty) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xxs),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -113,12 +126,12 @@ class AppListItem extends StatelessWidget {
                     else
                       const Spacer(),
                     if (actions.isNotEmpty) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       IconButtonTheme(
                         data: IconButtonThemeData(
                           style: IconButton.styleFrom(
-                            minimumSize: const Size.square(36),
-                            padding: const EdgeInsets.all(6),
+                            minimumSize: AppSizes.compactIconButtonMin,
+                            padding: AppInsets.compactIconButton,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                         ),

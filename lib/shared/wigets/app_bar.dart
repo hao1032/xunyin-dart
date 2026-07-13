@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_constants.dart';
 import '../../features/player/pages/mini.dart';
 
 class AppPageBar extends StatelessWidget implements PreferredSizeWidget {
@@ -46,7 +47,7 @@ class _AppPageBarTitle extends StatelessWidget {
               constraints: BoxConstraints(maxWidth: titleMaxWidth),
               child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.item),
             const Expanded(child: MiniPlayer(expand: true)),
           ],
         );

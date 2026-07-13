@@ -15,9 +15,11 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: showAppBar ? const AppPageBar(title: '设置') : null,
+      appBar: showAppBar
+          ? const AppPageBar(title: AppText.settingsTitle)
+          : null,
       body: ListView(
-        padding: EdgeInsets.zero,
+        padding: AppInsets.zero,
         children: [
           AppContent(
             child: Column(
@@ -26,7 +28,7 @@ class SettingsPage extends ConsumerWidget {
                 const AppSectionTitle(title: '内容', subtitle: '管理订阅、历史和下载'),
                 const SizedBox(height: AppSpacing.item),
                 AppActionCard(
-                  icon: Icons.rss_feed_rounded,
+                  icon: AppIcons.rss,
                   title: '订阅',
                   subtitle: '合集、UP主与 RSS 播客',
                   onTap: () {
@@ -34,9 +36,9 @@ class SettingsPage extends ConsumerWidget {
                     context.push('/subscriptions');
                   },
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.md),
                 AppActionCard(
-                  icon: Icons.history_rounded,
+                  icon: AppIcons.history,
                   title: '历史',
                   subtitle: '继续最近播放的单集',
                   onTap: () {
@@ -44,9 +46,9 @@ class SettingsPage extends ConsumerWidget {
                     context.push('/history');
                   },
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.md),
                 AppActionCard(
-                  icon: Icons.file_download_done_rounded,
+                  icon: AppIcons.downloadDone,
                   title: '下载',
                   subtitle: '查看和删除已下载单集',
                   onTap: () {
@@ -62,17 +64,17 @@ class SettingsPage extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.item),
                 Card(
                   child: SwitchListTile(
-                    secondary: const Icon(Icons.notifications_none),
+                    secondary: const Icon(AppIcons.notifications),
                     title: const Text('播放通知'),
                     subtitle: const Text('准备好后可在这里管理播放相关偏好'),
                     value: true,
                     onChanged: null,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.md),
                 Card(
                   child: ListTile(
-                    leading: const Icon(Icons.info_outline),
+                    leading: const Icon(AppIcons.info),
                     title: const Text('关于寻音'),
                     subtitle: const Text('搜索 B站视频与播客，并整理为播放列表'),
                   ),

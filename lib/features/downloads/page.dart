@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/app_logger.dart';
+import '../../core/app_constants.dart';
 import '../../core/display_formatters.dart';
 import '../../shared/wigets/app_bar.dart';
 import '../../shared/wigets/app_list_item.dart';
@@ -84,30 +85,32 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
                             context.push('/episode', extra: item.episode),
                         actions: [
                           IconButton(
-                            tooltip: '加入播放列表',
-                            icon: const Icon(Icons.playlist_add),
+                            tooltip: AppText.addToQueueFull,
+                            icon: const Icon(AppIcons.addToQueue),
                             onPressed: () {
                               ref
                                   .read(playbackQueueProvider.notifier)
                                   .add(item.episode);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('已加入播放列表')),
+                                const SnackBar(
+                                  content: Text(AppText.addedToQueueFull),
+                                ),
                               );
                             },
                           ),
                           IconButton(
-                            tooltip: '已下载',
-                            icon: const Icon(Icons.file_download_done_rounded),
+                            tooltip: AppText.downloaded,
+                            icon: const Icon(AppIcons.downloadDone),
                             onPressed: null,
                           ),
                           IconButton(
                             tooltip: '播放下载',
-                            icon: const Icon(Icons.play_arrow),
+                            icon: const Icon(AppIcons.play),
                             onPressed: () => _playDownloaded(item),
                           ),
                           IconButton(
                             tooltip: '删除下载',
-                            icon: const Icon(Icons.delete_outline),
+                            icon: const Icon(AppIcons.trash),
                             onPressed: () => _removeDownloaded(item),
                           ),
                         ],

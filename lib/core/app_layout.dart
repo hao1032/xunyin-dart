@@ -1,23 +1,15 @@
 import 'package:flutter/material.dart';
 
-/// Shared spacing and responsive containers for the app's content pages.
-abstract final class AppSpacing {
-  static const page = 20.0;
-  static const section = 28.0;
-  static const item = 12.0;
-}
+export 'app_constants.dart';
+
+import 'app_constants.dart';
 
 class AppContent extends StatelessWidget {
   const AppContent({
     super.key,
     required this.child,
-    this.maxWidth = 720,
-    this.padding = const EdgeInsets.fromLTRB(
-      AppSpacing.page,
-      8,
-      AppSpacing.page,
-      28,
-    ),
+    this.maxWidth = AppSizes.contentMaxWidth,
+    this.padding = AppInsets.page,
   });
 
   final Widget child;
@@ -59,7 +51,7 @@ class AppSectionTitle extends StatelessWidget {
             children: [
               Text(title, style: Theme.of(context).textTheme.titleLarge),
               if (subtitle != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   subtitle!,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -95,28 +87,32 @@ class AppEmptyState extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: AppInsets.emptyState,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 72,
-                height: 72,
+                width: AppSizes.emptyStateIconBox,
+                height: AppSizes.emptyStateIconBox,
                 decoration: BoxDecoration(
                   color: colors.secondaryContainer,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 32, color: colors.onSecondaryContainer),
+                child: Icon(
+                  icon,
+                  size: AppSizes.emptyStateIcon,
+                  color: colors.onSecondaryContainer,
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
               Text(
                 title,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 message,
                 textAlign: TextAlign.center,
@@ -125,7 +121,10 @@ class AppEmptyState extends StatelessWidget {
                   height: 1.45,
                 ),
               ),
-              if (action != null) ...[const SizedBox(height: 20), action!],
+              if (action != null) ...[
+                const SizedBox(height: AppSpacing.xl),
+                action!,
+              ],
             ],
           ),
         ),
