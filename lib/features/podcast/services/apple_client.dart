@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_logger.dart';
 import '../../../core/http_client.dart';
 import '../../episode/model.dart';
-import '../../search/model.dart';
+import '../../discover/model.dart';
 
 final applePodcastClientProvider = Provider<ApplePodcastClient>((ref) {
   return ApplePodcastClient(ref.watch(dioProvider));
@@ -16,6 +16,26 @@ class ApplePodcastClient {
   const ApplePodcastClient(this._dio);
 
   final Dio _dio;
+
+  Future<String?> lookupFeedUrl(String appleUrl) async {
+    final collectionId = applePodcastCollectionId(appleUrl);
+    if (collectionId == null) return null;
+    final response = await _dio.get<Object?>(
+      'https://itunes.apple.com/lookup',
+      queryParameters: {'id': collectionId},
+      options: Options(responseType: ResponseType.plain),
+    );
+    final body = parseAppleSearchBody(response.data);
+    final results = body['results'];
+    if (results is! List) return null;
+    for (final raw in results.whereType<Map>()) {
+      final feedUrl = raw['feedUrl'];
+      if (feedUrl is String && feedUrl.trim().isNotEmpty) {
+        return feedUrl.trim();
+      }
+    }
+    return null;
+  }
 
   Future<List<SearchResult>> search(String keyword) async {
     if (keyword.trim().isEmpty) return const [];
@@ -98,4 +118,14 @@ Map<String, dynamic> parseAppleSearchBody(Object? body) {
     if (decoded is Map) return decoded.cast<String, dynamic>();
   }
   return const {};
+}
+
+String? applePodcastCollectionId(String url) {
+  final host = Uri.tryParse(url)?.host.toLowerCase();
+  if (host == null ||
+      (!host.endsWith('podcasts.apple.com') &&
+          !host.endsWith('itunes.apple.com'))) {
+    return null;
+  }
+  return RegExp(r'/id(\d+)(?:[/?#]|$)').firstMatch(url)?.group(1);
 }

@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/downloads/page.dart';
-import '../features/home.dart';
+import '../features/home/page.dart';
 import '../features/episode/model.dart';
 import '../features/series/model.dart';
 import '../features/episode/page.dart';
 import '../features/series/page.dart';
+import '../features/player/pages/main.dart';
 import '../features/player/pages/queue.dart';
-import '../features/search/model.dart';
-import '../features/search/pages/result.dart';
-import '../features/search/pages/main.dart';
-import '../features/settings.dart';
+import '../features/discover/model.dart';
+import '../features/discover/pages/result.dart';
+import '../features/discover/pages/main.dart';
+import '../features/settings/page.dart';
 import '../features/settings/pages/history.dart';
 import '../features/settings/pages/series.dart';
 import '../shared/wigets/app_bar.dart';
@@ -20,13 +21,16 @@ final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(path: '/', builder: (context, state) => const MainShellPage()),
-    GoRoute(path: '/search', builder: (context, state) => const SearchPage()),
     GoRoute(
-      path: '/search/result',
+      path: '/discover',
+      builder: (context, state) => const DiscoverPage(),
+    ),
+    GoRoute(
+      path: '/discover/result',
       builder: (context, state) {
         final result = state.extra;
         if (result is! SearchResult) return const _MissingRouteData();
-        return SearchResultPage(result: result);
+        return DiscoverResultPage(result: result);
       },
     ),
     GoRoute(
@@ -43,10 +47,7 @@ final appRouter = GoRouter(
       builder: (context, state) => const DownloadsPage(),
     ),
     GoRoute(path: '/queue', builder: (context, state) => const QueuePage()),
-    GoRoute(
-      path: '/player',
-      builder: (context, state) => const MainShellPage(initialIndex: 1),
-    ),
+    GoRoute(path: '/player', builder: (context, state) => const PlayerPage()),
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsPage(),

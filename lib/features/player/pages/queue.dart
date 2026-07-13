@@ -77,6 +77,8 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                                     index: index,
                                     childIndex: childIndex,
                                   ),
+                              onPause: () =>
+                                  _pauseFromQueue(queue.current, index: index),
                               onLoadMore: () => _loadMoreSeries(entry),
                             );
                           }
@@ -98,13 +100,16 @@ class _QueuePageState extends ConsumerState<QueuePage> {
                                     _playingRequestEpisodeId == episode.id ||
                                     itemLoading,
                                 tooltip: active
-                                    ? '正在播放'
+                                    ? '暂停'
                                     : (itemLoading ? '加载中' : '播放'),
-                                onPressed: () => _playEpisode(
-                                  context,
-                                  episode,
-                                  index: index,
-                                ),
+                                onPressed: active
+                                    ? () =>
+                                          _pauseFromQueue(episode, index: index)
+                                    : () => _playEpisode(
+                                        context,
+                                        episode,
+                                        index: index,
+                                      ),
                               ),
                             ],
                           );
@@ -163,6 +168,15 @@ class _QueuePageState extends ConsumerState<QueuePage> {
         });
       }
     }
+  }
+
+  Future<void> _pauseFromQueue(Episode? episode, {required int index}) async {
+    AppLogger.userAction(
+      'pause_from_queue',
+      area: 'player',
+      data: {'episodeId': episode?.id, 'title': episode?.title, 'index': index},
+    );
+    await ref.read(appPlayerProvider).pause();
   }
 
   bool _canLoadMoreSeries(PlaybackQueueEntry entry) {
@@ -274,6 +288,7 @@ class _SeriesQueueCard extends StatefulWidget {
     required this.canLoadMore,
     required this.loadingMore,
     required this.onPlayEpisode,
+    required this.onPause,
     required this.onLoadMore,
   });
 
@@ -285,6 +300,7 @@ class _SeriesQueueCard extends StatefulWidget {
   final bool canLoadMore;
   final bool loadingMore;
   final void Function(Episode episode, int childIndex) onPlayEpisode;
+  final VoidCallback onPause;
   final VoidCallback onLoadMore;
 
   @override
@@ -418,12 +434,14 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                         widget.busyEpisodeId == playableEpisode.id ||
                         widget.loading,
                     tooltip: widget.playing
-                        ? '正在播放'
+                        ? '暂停'
                         : (widget.loading ? '加载中' : '播放系列'),
-                    onPressed: () => widget.onPlayEpisode(
-                      playableEpisode,
-                      playableEpisodeIndex < 0 ? 0 : playableEpisodeIndex,
-                    ),
+                    onPressed: widget.playing
+                        ? widget.onPause
+                        : () => widget.onPlayEpisode(
+                            playableEpisode,
+                            playableEpisodeIndex < 0 ? 0 : playableEpisodeIndex,
+                          ),
                   ),
                 ],
               ),
@@ -498,6 +516,7 @@ class _SeriesQueueCardState extends State<_SeriesQueueCard> {
                                     episode,
                                     episodeIndex,
                                   ),
+                                  onPause: widget.onPause,
                                 );
                               },
                             ),
@@ -534,6 +553,7 @@ class _SeriesEpisodeTile extends StatelessWidget {
     required this.playing,
     required this.loading,
     required this.onPlay,
+    required this.onPause,
   });
 
   final Episode episode;
@@ -542,6 +562,7 @@ class _SeriesEpisodeTile extends StatelessWidget {
   final bool playing;
   final bool loading;
   final VoidCallback onPlay;
+  final VoidCallback onPause;
 
   @override
   Widget build(BuildContext context) {
@@ -611,8 +632,8 @@ class _SeriesEpisodeTile extends StatelessWidget {
                 _QueuePlayButton(
                   playing: playing,
                   loading: loading,
-                  tooltip: playing ? (loading ? '加载中' : '正在播放') : '播放',
-                  onPressed: onPlay,
+                  tooltip: playing ? (loading ? '加载中' : '暂停') : '播放',
+                  onPressed: playing ? onPause : onPlay,
                 ),
               ],
             ),
@@ -646,72 +667,9 @@ class _QueuePlayButton extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : playing
-          ? const _PlayingBars()
+          ? const Icon(Icons.pause_rounded)
           : const Icon(Icons.play_arrow_rounded),
       onPressed: loading ? null : onPressed,
-    );
-  }
-}
-
-class _PlayingBars extends StatefulWidget {
-  const _PlayingBars();
-
-  @override
-  State<_PlayingBars> createState() => _PlayingBarsState();
-}
-
-class _PlayingBarsState extends State<_PlayingBars>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return SizedBox(
-          width: 24,
-          height: 24,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _bar(color, 8 + 8 * _controller.value),
-              const SizedBox(width: 3),
-              _bar(color, 16 - 6 * _controller.value),
-              const SizedBox(width: 3),
-              _bar(color, 10 + 10 * _controller.value),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _bar(Color color, double height) {
-    return Container(
-      width: 4,
-      height: height,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(2),
-      ),
     );
   }
 }

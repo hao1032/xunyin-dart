@@ -11,20 +11,20 @@ import '../../episode/model.dart';
 import '../repository.dart';
 import '../model.dart';
 
-class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({super.key, this.showSettingsAction = true});
+class DiscoverPage extends ConsumerStatefulWidget {
+  const DiscoverPage({super.key, this.showSettingsAction = true});
 
   final bool showSettingsAction;
 
   @override
-  ConsumerState<SearchPage> createState() => _SearchPageState();
+  ConsumerState<DiscoverPage> createState() => _DiscoverPageState();
 }
 
-class _SearchPageState extends ConsumerState<SearchPage> {
+class _DiscoverPageState extends ConsumerState<DiscoverPage> {
   static const _pageSize = 20;
 
   final _controller = TextEditingController();
-  SearchScope _scope = SearchScope.all;
+  SearchScope _scope = SearchScope.bilibili;
   AsyncValue<List<SearchResult>> _results = const AsyncData([]);
   int _page = 1;
   bool _hasNextPage = false;
@@ -119,7 +119,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         'bvid': result.bvid,
       },
     );
-    context.push('/search/result', extra: result);
+    context.push('/discover/result', extra: result);
   }
 
   bool _canOpen(SearchResult result) {
@@ -170,7 +170,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SegmentedButton<SearchScope>(
-                    segments: SearchScope.values.map((scope) {
+                    segments: [SearchScope.bilibili, SearchScope.podcast].map((
+                      scope,
+                    ) {
                       return ButtonSegment(
                         value: scope,
                         label: Text(scope.label),
@@ -282,7 +284,7 @@ class _SearchWelcome extends StatelessWidget {
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 8),
-                    const Text('从 B站长内容到 RSS 播客，统一整理成你的收听频道。'),
+                    const Text('从 B站长内容到 RSS 播客，统一整理成你的收听订阅。'),
                   ],
                 ),
               ),
@@ -298,7 +300,7 @@ class _SearchWelcome extends StatelessWidget {
                     _SourceHint(
                       icon: Icons.video_library_rounded,
                       title: 'B站合集',
-                      subtitle: '把系列视频作为一个频道持续收听',
+                      subtitle: '把系列视频作为一个合集持续收听',
                     ),
                     Divider(indent: 64),
                     _SourceHint(

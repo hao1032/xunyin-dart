@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'player/pages/main.dart';
-import 'player/pages/queue.dart';
-import 'search/pages/main.dart';
-import 'settings.dart';
+import '../discover/pages/main.dart';
+import '../player/pages/queue.dart';
+import '../settings/page.dart';
 
 class MainShellPage extends ConsumerStatefulWidget {
   const MainShellPage({super.key, this.initialIndex = 0});
@@ -25,8 +24,7 @@ class _MainShellPageState extends ConsumerState<MainShellPage> {
         index: _selectedIndex,
         children: const [
           QueuePage(),
-          PlayerPage(),
-          SearchPage(showSettingsAction: false),
+          DiscoverPage(showSettingsAction: false),
           SettingsPage(),
         ],
       ),
@@ -48,11 +46,6 @@ class _MainShellPageState extends ConsumerState<MainShellPage> {
               icon: Icon(Icons.queue_music_outlined),
               selectedIcon: Icon(Icons.queue_music_rounded),
               label: '列表',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.album_outlined),
-              selectedIcon: Icon(Icons.album_rounded),
-              label: '正在播放',
             ),
             NavigationDestination(
               icon: Icon(Icons.explore_outlined),

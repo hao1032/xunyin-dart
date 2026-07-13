@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../core/app_logger.dart';
-import '../core/app_layout.dart';
-import '../shared/wigets/app_action_card.dart';
-import '../shared/wigets/app_bar.dart';
+import '../../core/app_logger.dart';
+import '../../core/app_layout.dart';
+import '../../shared/wigets/app_action_card.dart';
+import '../../shared/wigets/app_bar.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key, this.showAppBar = true});
@@ -37,7 +37,7 @@ class SettingsPage extends ConsumerWidget {
                 const SizedBox(height: 10),
                 AppActionCard(
                   icon: Icons.history_rounded,
-                  title: '历史',
+                  title: '历史记录',
                   subtitle: '继续最近播放的单集',
                   onTap: () {
                     AppLogger.userAction('open_history', area: 'settings');

@@ -515,7 +515,8 @@ class BilibiliClient {
         code: 'bad_media_url',
       );
     }
-    final normalizedUrl = _normalizeMediaUrl(url);
+    final normalizedUrl = normalizeMediaUrl(url);
+    final normalizedUri = Uri.tryParse(normalizedUrl);
     AppLogger.result(
       'request_media_url',
       area: 'bilibili',
@@ -526,8 +527,9 @@ class BilibiliClient {
         'selectedId': selected['id'],
         'selectedCodecs': selected['codecs'],
         'selectedBandwidth': selected['bandwidth'],
-        'scheme': Uri.tryParse(normalizedUrl)?.scheme,
-        'host': Uri.tryParse(normalizedUrl)?.host,
+        'scheme': normalizedUri?.scheme,
+        'host': normalizedUri?.host,
+        'port': normalizedUri?.hasPort == true ? normalizedUri?.port : null,
       },
     );
     return normalizedUrl;
@@ -543,10 +545,10 @@ class BilibiliClient {
     return aacCandidates.isNotEmpty ? aacCandidates.first : sorted.first;
   }
 
-  String _normalizeMediaUrl(String url) {
+  static String normalizeMediaUrl(String url) {
     final uri = Uri.tryParse(url);
     if (uri == null) return url;
-    if (uri.scheme == 'http') {
+    if (uri.scheme == 'http' && !uri.hasPort) {
       return uri.replace(scheme: 'https').toString();
     }
     return url;

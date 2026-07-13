@@ -24,4 +24,23 @@ void main() {
     expect(body['resultCount'], 0);
     expect(body['results'], isEmpty);
   });
+
+  test('extracts collection id from Apple Podcasts urls', () {
+    expect(
+      applePodcastCollectionId(
+        'https://podcasts.apple.com/us/podcast/show/id1755540793?i=1000775573262&uo=4',
+      ),
+      '1755540793',
+    );
+    expect(
+      applePodcastCollectionId(
+        'https://itunes.apple.com/us/podcast/show/id1755540793?mt=2&uo=4',
+      ),
+      '1755540793',
+    );
+    expect(
+      applePodcastCollectionId('https://example.com/id1755540793'),
+      isNull,
+    );
+  });
 }

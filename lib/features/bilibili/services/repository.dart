@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_logger.dart';
 import '../../series/model.dart';
 import '../../episode/model.dart';
-import '../../search/model.dart';
+import '../../discover/model.dart';
 import 'client.dart';
 
 final bilibiliRepositoryProvider = Provider<BilibiliRepository>((ref) {
@@ -259,6 +259,7 @@ class BilibiliRepository {
       description: detail['desc'] as String?,
       author: owner['name'] as String?,
       imageUrl: _normalizeImageUrl(detail['pic'] as String?),
+      creator: _creatorSeriesFromOwner(detail),
       episodes: episodes,
     );
   }
@@ -373,22 +374,33 @@ class BilibiliRepository {
     Map<String, dynamic> detail,
     Episode episode,
   ) {
+    final creator = _creatorSeriesFromOwner(detail, fallbackEpisode: episode);
+    if (creator == null) return null;
+    return creator.copyWith(episodes: [episode]);
+  }
+
+  BilibiliCreatorSeries? _creatorSeriesFromOwner(
+    Map<String, dynamic> detail, {
+    Episode? fallbackEpisode,
+  }) {
     final owner = detail['owner'];
     if (owner is! Map) return null;
     final name = owner['name'] as String?;
     if (name == null || name.trim().isEmpty) return null;
     final mid = (owner['mid'] as num?)?.toInt();
     return BilibiliCreatorSeries(
-      id: 'bili-up-${mid ?? episode.bvid ?? episode.id}',
+      id: 'bili-up-${mid ?? fallbackEpisode?.bvid ?? fallbackEpisode?.id ?? detail['bvid'] ?? detail['aid'] ?? name}',
       title: name,
       originalUrl: mid == null
-          ? episode.originalUrl
+          ? fallbackEpisode?.originalUrl ??
+                'https://www.bilibili.com/video/${detail['bvid'] ?? ''}'
           : 'https://space.bilibili.com/$mid',
       author: name,
       description: owner['sign'] as String?,
       imageUrl:
-          _normalizeImageUrl(owner['face'] as String?) ?? episode.imageUrl,
-      episodes: [episode],
+          _normalizeImageUrl(owner['face'] as String?) ??
+          fallbackEpisode?.imageUrl ??
+          _normalizeImageUrl(detail['pic'] as String?),
     );
   }
 

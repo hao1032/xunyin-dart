@@ -4,7 +4,7 @@ import 'package:xunyin_dart/features/bilibili/services/client.dart';
 import 'package:xunyin_dart/features/bilibili/services/repository.dart';
 import 'package:xunyin_dart/features/series/model.dart';
 import 'package:xunyin_dart/features/episode/model.dart';
-import 'package:xunyin_dart/features/search/model.dart';
+import 'package:xunyin_dart/features/discover/model.dart';
 
 void main() {
   test('marks B站 search rows without bvid as unavailable', () async {
@@ -67,6 +67,9 @@ void main() {
 
     expect(series.title, 'Long Talk');
     expect(series, isA<BilibiliCollectionSeries>());
+    final collection = series as BilibiliCollectionSeries;
+    expect(collection.creator?.id, 'bili-up-42');
+    expect(collection.creator?.title, 'Alice');
     expect(series.episodes, hasLength(2));
     expect(series.episodes.first.title, 'Part 1');
     expect(series.episodes.first.cid, 101);
@@ -168,6 +171,19 @@ void main() {
     expect(series, isA<BilibiliCreatorSeries>());
     expect(series.episodes.first.cid, 201);
     expect(series.episodes.first.duration, const Duration(seconds: 60));
+  });
+
+  test('preserves explicit B站 media ports when normalizing URLs', () {
+    const portUrl =
+        'http://xy39x174x255x6xy.mcdn.bilivideo.cn:51404/upgcxcode/audio.m4s';
+
+    expect(BilibiliClient.normalizeMediaUrl(portUrl), portUrl);
+    expect(
+      BilibiliClient.normalizeMediaUrl(
+        'http://upos-sz-mirrorcos.bilivideo.com/upgcxcode/audio.m4s',
+      ),
+      'https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/audio.m4s',
+    );
   });
 }
 

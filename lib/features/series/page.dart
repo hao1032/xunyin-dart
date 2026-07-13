@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../core/app_logger.dart';
 import '../../core/display_formatters.dart';
@@ -233,6 +234,15 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
     }
   }
 
+  void _openCreatorSeries(BilibiliCreatorSeries creator) {
+    AppLogger.userAction(
+      'open_creator_from_collection',
+      area: 'series',
+      data: {'seriesId': _series.id, 'creatorId': creator.id},
+    );
+    context.push('/series', extra: creator);
+  }
+
   Future<void> _playEpisode(Episode episode) async {
     AppLogger.userAction(
       'play_episode_from_series',
@@ -259,6 +269,19 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
         ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
     }
+  }
+
+  Future<void> _pauseEpisode(Episode episode) async {
+    AppLogger.userAction(
+      'pause_episode_from_series',
+      area: 'player',
+      data: {
+        'episodeId': episode.id,
+        'title': episode.title,
+        'seriesId': widget.series.id,
+      },
+    );
+    await ref.read(appPlayerProvider).pause();
   }
 
   Future<void> _toggleDownload(Episode episode) async {
@@ -334,7 +357,10 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                                   style: Theme.of(context).textTheme.titleLarge,
                                 ),
                                 const SizedBox(height: 6),
-                                Text(series.author ?? series.sourceType.label),
+                                _SeriesAuthor(
+                                  series: series,
+                                  onOpenCreator: _openCreatorSeries,
+                                ),
                                 const SizedBox(height: 10),
                                 Text(
                                   _loadingEpisodes
@@ -355,7 +381,9 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                             message: isQueued ? '已加入播放列表' : '加入播放列表',
                             child: FilledButton.tonalIcon(
                               icon: Icon(
-                                isQueued ? Icons.check : Icons.playlist_add,
+                                isQueued
+                                    ? Icons.playlist_add_check_rounded
+                                    : Icons.playlist_add,
                               ),
                               label: Text(isQueued ? '已加入' : '加入列表'),
                               onPressed: episodes.isEmpty || isQueued
@@ -474,7 +502,7 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                               tooltip: episodeQueued ? '已加入播放列表' : '加入播放列表',
                               icon: Icon(
                                 episodeQueued
-                                    ? Icons.check
+                                    ? Icons.playlist_add_check_rounded
                                     : Icons.playlist_add,
                               ),
                               onPressed: episodeQueued
@@ -530,31 +558,20 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                                       _toggleDownload(episode);
                                     },
                             ),
-                            IconButton(
-                              tooltip: '播放',
-                              icon: const Icon(Icons.play_arrow),
-                              onPressed: () => _playEpisode(episode),
+                            _SeriesEpisodePlayButton(
+                              episode: episode,
+                              loading: _loadingEpisodes,
+                              onPlay: () => _playEpisode(episode),
+                              onPause: () => _pauseEpisode(episode),
                             ),
                           ],
                         );
                       }),
                       if (!_loadingEpisodes && _hasMoreEpisodes) ...[
                         const SizedBox(height: 12),
-                        Center(
-                          child: FilledButton.tonalIcon(
-                            icon: _loadingMoreEpisodes
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.navigate_next),
-                            label: const Text('下一页'),
-                            onPressed: _loadingMoreEpisodes
-                                ? null
-                                : _loadMoreEpisodes,
-                          ),
+                        _LoadMoreEpisodesButton(
+                          loading: _loadingMoreEpisodes,
+                          onPressed: _loadMoreEpisodes,
                         ),
                       ],
                     ],
@@ -618,6 +635,113 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
     if (_subscribing) return '订阅中';
     if (_subscribed) return '已订阅';
     return '订阅';
+  }
+}
+
+class _SeriesAuthor extends StatelessWidget {
+  const _SeriesAuthor({required this.series, required this.onOpenCreator});
+
+  final Series series;
+  final ValueChanged<BilibiliCreatorSeries> onOpenCreator;
+
+  @override
+  Widget build(BuildContext context) {
+    final creator = switch (series) {
+      BilibiliCollectionSeries(:final creator) => creator,
+      _ => null,
+    };
+    if (creator == null) {
+      return Text(series.author ?? series.sourceType.label);
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton(
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.zero,
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          alignment: Alignment.centerLeft,
+        ),
+        onPressed: () => onOpenCreator(creator),
+        child: Text(creator.title),
+      ),
+    );
+  }
+}
+
+class _SeriesEpisodePlayButton extends ConsumerWidget {
+  const _SeriesEpisodePlayButton({
+    required this.episode,
+    required this.loading,
+    required this.onPlay,
+    required this.onPause,
+  });
+
+  final Episode episode;
+  final bool loading;
+  final VoidCallback onPlay;
+  final VoidCallback onPause;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final queue = ref.watch(playbackQueueProvider);
+    final player = ref.watch(appPlayerProvider);
+    final isCurrent = queue.current?.id == episode.id;
+    return StreamBuilder<PlayerState>(
+      stream: player.playerStateStream,
+      builder: (context, snapshot) {
+        final state = snapshot.data;
+        final processingState =
+            state?.processingState ?? player.processingState;
+        final buffering =
+            processingState == ProcessingState.loading ||
+            processingState == ProcessingState.buffering;
+        final playing = isCurrent && (state?.playing ?? player.playing);
+        final busy = loading || (isCurrent && buffering && !playing);
+        return IconButton(
+          tooltip: busy ? '加载中' : (playing ? '暂停' : '播放'),
+          icon: busy
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(playing ? Icons.pause_rounded : Icons.play_arrow),
+          onPressed: busy ? null : (playing ? onPause : onPlay),
+        );
+      },
+    );
+  }
+}
+
+class _LoadMoreEpisodesButton extends StatelessWidget {
+  const _LoadMoreEpisodesButton({
+    required this.loading,
+    required this.onPressed,
+  });
+
+  final bool loading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton.icon(
+        icon: loading
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.expand_more_rounded),
+        label: Text(loading ? '加载中' : '加载更多'),
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        onPressed: loading ? null : onPressed,
+      ),
+    );
   }
 }
 

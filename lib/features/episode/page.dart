@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../core/app_logger.dart';
 import '../../core/display_formatters.dart';
@@ -86,6 +87,15 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _pause() async {
+    AppLogger.userAction(
+      'pause_from_episode',
+      area: 'player',
+      data: {'episodeId': widget.episode.id, 'title': widget.episode.title},
+    );
+    await ref.read(appPlayerProvider).pause();
   }
 
   Future<void> _downloadEpisode() async {
@@ -200,7 +210,9 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                           Expanded(
                             child: FilledButton.icon(
                               icon: Icon(
-                                isQueued ? Icons.check : Icons.playlist_add,
+                                isQueued
+                                    ? Icons.playlist_add_check_rounded
+                                    : Icons.playlist_add,
                               ),
                               label: Text(isQueued ? '已加入' : '加入列表'),
                               onPressed: isQueued
@@ -239,23 +251,11 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                                 : _downloadEpisode,
                           ),
                           const SizedBox(width: 8),
-                          IconButton.filled(
-                            tooltip: _loading
-                                ? '准备播放'
-                                : (isCurrent ? '正在播放' : '播放'),
-                            icon: _loading
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Icon(
-                                    isCurrent
-                                        ? Icons.graphic_eq
-                                        : Icons.play_arrow,
-                                  ),
-                            onPressed: _loading ? null : _play,
+                          _EpisodePlayButton(
+                            loading: _loading,
+                            isCurrent: isCurrent,
+                            onPlay: _play,
+                            onPause: _pause,
                           ),
                         ],
                       ),
@@ -324,6 +324,48 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
       for (final item in series)
         if (seen.add(item.id)) item,
     ];
+  }
+}
+
+class _EpisodePlayButton extends ConsumerWidget {
+  const _EpisodePlayButton({
+    required this.loading,
+    required this.isCurrent,
+    required this.onPlay,
+    required this.onPause,
+  });
+
+  final bool loading;
+  final bool isCurrent;
+  final VoidCallback onPlay;
+  final VoidCallback onPause;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final player = ref.watch(appPlayerProvider);
+    return StreamBuilder<PlayerState>(
+      stream: player.playerStateStream,
+      builder: (context, snapshot) {
+        final state = snapshot.data;
+        final processingState =
+            state?.processingState ?? player.processingState;
+        final buffering =
+            processingState == ProcessingState.loading ||
+            processingState == ProcessingState.buffering;
+        final playing = isCurrent && (state?.playing ?? player.playing);
+        final busy = loading || (isCurrent && buffering && !playing);
+        return IconButton.filled(
+          tooltip: busy ? '准备播放' : (playing ? '暂停' : '播放'),
+          icon: busy
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(playing ? Icons.pause_rounded : Icons.play_arrow),
+          onPressed: busy ? null : (playing ? onPause : onPlay),
+        );
+      },
+    );
   }
 }
 

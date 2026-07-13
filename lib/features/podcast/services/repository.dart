@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_logger.dart';
 import '../../../core/http_client.dart';
-import '../../search/model.dart';
+import '../../discover/model.dart';
 import '../../series/model.dart';
 import 'apple_client.dart';
 import 'rss_parser.dart';
@@ -36,18 +36,26 @@ class PodcastRepository {
   }
 
   Future<Series> loadRssFeed(String feedUrl, {String? title}) async {
+    final resolvedFeedUrl = await _resolveFeedUrl(feedUrl);
     AppLogger.result(
       'load_rss_series',
       area: 'podcast',
       message: 'request',
-      data: {'feedUrl': feedUrl, 'title': ?title},
+      data: {
+        'feedUrl': resolvedFeedUrl,
+        if (resolvedFeedUrl != feedUrl) 'originalFeedUrl': feedUrl,
+        'title': ?title,
+      },
     );
     final response = await _dio.get<Object?>(
-      feedUrl,
+      resolvedFeedUrl,
       options: Options(responseType: ResponseType.plain),
     );
     final xml = response.data?.toString() ?? '';
-    final series = _rssParser.parse(xml, feedUrl: feedUrl);
+    if (_looksLikeHtml(xml)) {
+      throw FormatException('地址返回的是网页，不是 RSS Feed: $resolvedFeedUrl');
+    }
+    final series = _rssParser.parse(xml, feedUrl: resolvedFeedUrl);
     AppLogger.result(
       'load_rss_series',
       area: 'podcast',
@@ -58,5 +66,17 @@ class PodcastRepository {
       },
     );
     return series;
+  }
+
+  Future<String> _resolveFeedUrl(String feedUrl) async {
+    final resolved = await _appleClient.lookupFeedUrl(feedUrl);
+    return resolved ?? feedUrl;
+  }
+
+  bool _looksLikeHtml(String body) {
+    final text = body.trimLeft().toLowerCase();
+    return text.startsWith('<!doctype html') ||
+        text.startsWith('<html') ||
+        text.contains('<head>');
   }
 }

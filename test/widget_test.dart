@@ -24,6 +24,6 @@ void main() {
     expect(find.text('RSS播客'), findsOneWidget);
     expect(find.text('B站'), findsOneWidget);
     expect(find.text('播客'), findsOneWidget);
-    expect(find.text('全部'), findsOneWidget);
+    expect(find.text('全部'), findsNothing);
   });
 }

@@ -10,16 +10,16 @@ import '../../episode/model.dart';
 import '../../episode/page.dart';
 import '../model.dart';
 
-class SearchResultPage extends ConsumerStatefulWidget {
-  const SearchResultPage({super.key, required this.result});
+class DiscoverResultPage extends ConsumerStatefulWidget {
+  const DiscoverResultPage({super.key, required this.result});
 
   final SearchResult result;
 
   @override
-  ConsumerState<SearchResultPage> createState() => _SearchResultPageState();
+  ConsumerState<DiscoverResultPage> createState() => _DiscoverResultPageState();
 }
 
-class _SearchResultPageState extends ConsumerState<SearchResultPage> {
+class _DiscoverResultPageState extends ConsumerState<DiscoverResultPage> {
   late Future<EpisodePageArgs> _loadFuture;
 
   @override

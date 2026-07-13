@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_logger.dart';
 import '../bilibili/services/repository.dart';
 import '../settings/repository.dart';
-import '../search/model.dart';
+import '../discover/model.dart';
 import '../series/model.dart';
 import 'model.dart';
 

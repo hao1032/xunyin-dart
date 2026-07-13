@@ -90,9 +90,16 @@ sealed class Series {
         description: json['description'] as String?,
         author: json['author'] as String?,
         imageUrl: json['imageUrl'] as String?,
+        creator: _creatorFromJson(json['creator']),
         episodes: episodes,
       ),
     };
+  }
+
+  static BilibiliCreatorSeries? _creatorFromJson(Object? value) {
+    if (value is! Map) return null;
+    final series = Series.fromJson(value.cast<String, Object?>());
+    return series is BilibiliCreatorSeries ? series : null;
   }
 
   static _SeriesType _typeFromJson(Map<String, Object?> json) {
@@ -114,8 +121,11 @@ final class BilibiliCollectionSeries extends Series {
     super.description,
     super.author,
     super.imageUrl,
+    this.creator,
     super.episodes,
   }) : super(sourceType: SourceType.bilibili);
+
+  final BilibiliCreatorSeries? creator;
 
   @override
   String get label => 'B站合集';
@@ -135,9 +145,16 @@ final class BilibiliCollectionSeries extends Series {
       description: description,
       author: author,
       imageUrl: imageUrl,
+      creator: creator,
       episodes: episodes ?? this.episodes,
     );
   }
+
+  @override
+  Map<String, Object?> toJson() => {
+    ..._commonJson(),
+    if (creator != null) 'creator': creator!.toJson(),
+  };
 }
 
 final class BilibiliCreatorSeries extends Series {

@@ -43,7 +43,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AppPageBar(title: '频道'),
+      appBar: const AppPageBar(title: '订阅'),
       body: Column(
         children: [
           Expanded(
@@ -131,7 +131,7 @@ class _EmptySeries extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(height: 18),
-            Text('还没有频道', style: Theme.of(context).textTheme.titleLarge),
+            Text('还没有订阅', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             const Text(
               '搜索 B站内容或播客，然后订阅合集、UP主或 RSS 播客。',
