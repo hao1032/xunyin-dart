@@ -8,7 +8,7 @@ import '../../core/display_formatters.dart';
 import '../../core/plain_text.dart';
 import '../../core/app_layout.dart';
 import '../../shared/wigets/app_bar.dart';
-import '../../shared/wigets/cached_cover_image.dart';
+import '../../shared/wigets/app_detail.dart';
 import '../../shared/wigets/app_list_item.dart';
 import '../downloads/repository.dart';
 import '../settings/repository.dart';
@@ -340,198 +340,62 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _SeriesCover(
-                            url: series.imageUrl,
-                            circular: isCreatorSeries,
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  series.title,
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                                const SizedBox(height: 6),
-                                _SeriesAuthor(
-                                  series: series,
-                                  onOpenCreator: _openCreatorSeries,
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  _loadingEpisodes
-                                      ? '加载中'
-                                      : _episodeCountText(series, episodes),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          Tooltip(
-                            message: isQueued ? '已加入播放列表' : '加入播放列表',
-                            child: FilledButton.tonalIcon(
-                              icon: Icon(
-                                isQueued
-                                    ? Icons.playlist_add_check_rounded
-                                    : Icons.playlist_add,
-                              ),
-                              label: Text(isQueued ? '已加入' : '加入列表'),
-                              onPressed: episodes.isEmpty || isQueued
-                                  ? null
-                                  : () {
-                                      AppLogger.userAction(
-                                        'add_series_to_queue',
-                                        area: 'player',
-                                        data: {
-                                          'seriesId': series.id,
-                                          'title': series.title,
-                                          'episodeCount': episodes.length,
-                                        },
-                                      );
-                                      ref
-                                          .read(playbackQueueProvider.notifier)
-                                          .addSeries(
-                                            series.copyWith(episodes: episodes),
-                                          );
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('已加入播放列表'),
-                                        ),
-                                      );
-                                    },
-                            ),
-                          ),
-                          FilledButton.tonalIcon(
-                            icon: _checkingSubscription || _subscribing
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Icon(
-                                    _subscribed
-                                        ? Icons.notifications_active_outlined
-                                        : Icons.notifications_none,
-                                  ),
-                            label: Text(_subscriptionTooltip()),
-                            onPressed:
-                                _checkingSubscription ||
-                                    _subscribing ||
-                                    _subscribed
-                                ? null
-                                : _subscribe,
-                          ),
-                        ],
-                      ),
-                      if (description != null) ...[
-                        const SizedBox(height: 12),
-                        Text(description),
-                      ],
-                      const SizedBox(height: 20),
-                      AppSectionTitle(
-                        title: '单集',
-                        subtitle: _loadingEpisodes
-                            ? '正在加载'
-                            : _episodeSectionSubtitle(series, episodes),
-                      ),
-                      const SizedBox(height: 10),
-                      if (_loadingEpisodes)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(child: CircularProgressIndicator()),
+                      AppDetail(
+                        title: series.title,
+                        coverUrl: series.imageUrl,
+                        coverIcon: isCreatorSeries
+                            ? Icons.person
+                            : Icons.podcasts,
+                        subtitle: _SeriesAuthor(
+                          series: series,
+                          onOpenCreator: _openCreatorSeries,
                         ),
-                      if (_episodesError != null)
-                        Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.error_outline),
-                            title: Text('${series.shortLabel}内容加载失败'),
-                            subtitle: Text(_episodesError.toString()),
-                            trailing: TextButton(
-                              onPressed: _loadEpisodes,
-                              child: const Text('重试'),
-                            ),
-                          ),
-                        ),
-                      ...episodes.map((episode) {
-                        final episodeQueued = queue.items.any(
-                          (item) => item.containsEpisode(episode.id),
-                        );
-                        final downloaded = _downloadedEpisodeIds.contains(
-                          episode.id,
-                        );
-                        final busy = _busyEpisodeIds.contains(episode.id);
-                        return AppListItem(
-                          coverUrl: episode.imageUrl,
-                          placeholderIcon: Icons.music_note,
-                          title: episode.title,
-                          subtitle: _episodeSubtitle(episode),
-                          metadata: _episodeMetadata(episode),
-                          onTap: () {
-                            AppLogger.userAction(
-                              'open_episode',
-                              area: 'podcast',
-                              data: {
-                                'episodeId': episode.id,
-                                'title': episode.title,
-                                'seriesId': series.id,
-                              },
-                            );
-                            context.push(
-                              '/episode',
-                              extra: EpisodePageArgs(
-                                episode: episode,
-                                relatedSeries: [series],
+                        actions: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            Tooltip(
+                              message: isQueued ? '已加入播放列表' : '加入播放列表',
+                              child: FilledButton.tonalIcon(
+                                icon: Icon(
+                                  isQueued
+                                      ? Icons.playlist_add_check_rounded
+                                      : Icons.playlist_add,
+                                ),
+                                label: Text(isQueued ? '已加入' : '加入列表'),
+                                onPressed: episodes.isEmpty || isQueued
+                                    ? null
+                                    : () {
+                                        AppLogger.userAction(
+                                          'add_series_to_queue',
+                                          area: 'player',
+                                          data: {
+                                            'seriesId': series.id,
+                                            'title': series.title,
+                                            'episodeCount': episodes.length,
+                                          },
+                                        );
+                                        ref
+                                            .read(
+                                              playbackQueueProvider.notifier,
+                                            )
+                                            .addSeries(
+                                              series.copyWith(
+                                                episodes: episodes,
+                                              ),
+                                            );
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('已加入播放列表'),
+                                          ),
+                                        );
+                                      },
                               ),
-                            );
-                          },
-                          actions: [
-                            IconButton(
-                              tooltip: episodeQueued ? '已加入播放列表' : '加入播放列表',
-                              icon: Icon(
-                                episodeQueued
-                                    ? Icons.playlist_add_check_rounded
-                                    : Icons.playlist_add,
-                              ),
-                              onPressed: episodeQueued
-                                  ? null
-                                  : () {
-                                      AppLogger.userAction(
-                                        'add_episode_to_queue',
-                                        area: 'player',
-                                        data: {
-                                          'episodeId': episode.id,
-                                          'title': episode.title,
-                                          'seriesId': series.id,
-                                        },
-                                      );
-                                      ref
-                                          .read(playbackQueueProvider.notifier)
-                                          .add(episode);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('已加入播放列表'),
-                                        ),
-                                      );
-                                    },
                             ),
-                            IconButton(
-                              tooltip: downloaded ? '已下载' : '下载到本地',
-                              icon: busy
+                            FilledButton.tonalIcon(
+                              icon: _checkingSubscription || _subscribing
                                   ? const SizedBox.square(
                                       dimension: 18,
                                       child: CircularProgressIndicator(
@@ -539,41 +403,146 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
                                       ),
                                     )
                                   : Icon(
-                                      downloaded
-                                          ? Icons.offline_pin
-                                          : Icons.download_outlined,
+                                      _subscribed
+                                          ? Icons.notifications_active_outlined
+                                          : Icons.notifications_none,
                                     ),
-                              onPressed: busy || downloaded
+                              label: Text(_subscriptionTooltip()),
+                              onPressed:
+                                  _checkingSubscription ||
+                                      _subscribing ||
+                                      _subscribed
                                   ? null
-                                  : () {
-                                      AppLogger.userAction(
-                                        'toggle_episode_download',
-                                        area: 'download',
-                                        data: {
-                                          'episodeId': episode.id,
-                                          'title': episode.title,
-                                          'downloaded': downloaded,
-                                        },
-                                      );
-                                      _toggleDownload(episode);
-                                    },
-                            ),
-                            _SeriesEpisodePlayButton(
-                              episode: episode,
-                              loading: _loadingEpisodes,
-                              onPlay: () => _playEpisode(episode),
-                              onPause: () => _pauseEpisode(episode),
+                                  : _subscribe,
                             ),
                           ],
-                        );
-                      }),
-                      if (!_loadingEpisodes && _hasMoreEpisodes) ...[
-                        const SizedBox(height: 12),
-                        _LoadMoreEpisodesButton(
-                          loading: _loadingMoreEpisodes,
-                          onPressed: _loadMoreEpisodes,
                         ),
-                      ],
+                        description: description,
+                        children: [
+                          AppDetailEpisodeList(
+                            title: '单集',
+                            subtitle: _episodeSectionSubtitle(series, episodes),
+                            loading: _loadingEpisodes,
+                            error: _episodesError,
+                            errorTitle: '${series.shortLabel}内容加载失败',
+                            onRetry: _loadEpisodes,
+                            footer: !_loadingEpisodes && _hasMoreEpisodes
+                                ? _LoadMoreEpisodesButton(
+                                    loading: _loadingMoreEpisodes,
+                                    onPressed: _loadMoreEpisodes,
+                                  )
+                                : null,
+                            children: episodes.map((episode) {
+                              final episodeQueued = queue.items.any(
+                                (item) => item.containsEpisode(episode.id),
+                              );
+                              final downloaded = _downloadedEpisodeIds.contains(
+                                episode.id,
+                              );
+                              final busy = _busyEpisodeIds.contains(episode.id);
+                              return AppListItem(
+                                coverUrl: episode.imageUrl,
+                                placeholderIcon: Icons.music_note,
+                                title: episode.title,
+                                subtitle: _episodeSubtitle(episode),
+                                metadata: _episodeMetadata(episode),
+                                onTap: () {
+                                  AppLogger.userAction(
+                                    'open_episode',
+                                    area: 'podcast',
+                                    data: {
+                                      'episodeId': episode.id,
+                                      'title': episode.title,
+                                      'seriesId': series.id,
+                                    },
+                                  );
+                                  context.push(
+                                    '/episode',
+                                    extra: EpisodePageArgs(
+                                      episode: episode,
+                                      relatedSeries: [series],
+                                    ),
+                                  );
+                                },
+                                actions: [
+                                  IconButton(
+                                    tooltip: episodeQueued
+                                        ? '已加入播放列表'
+                                        : '加入播放列表',
+                                    icon: Icon(
+                                      episodeQueued
+                                          ? Icons.playlist_add_check_rounded
+                                          : Icons.playlist_add,
+                                    ),
+                                    onPressed: episodeQueued
+                                        ? null
+                                        : () {
+                                            AppLogger.userAction(
+                                              'add_episode_to_queue',
+                                              area: 'player',
+                                              data: {
+                                                'episodeId': episode.id,
+                                                'title': episode.title,
+                                                'seriesId': series.id,
+                                              },
+                                            );
+                                            ref
+                                                .read(
+                                                  playbackQueueProvider
+                                                      .notifier,
+                                                )
+                                                .add(episode);
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('已加入播放列表'),
+                                              ),
+                                            );
+                                          },
+                                  ),
+                                  IconButton(
+                                    tooltip: downloaded ? '已下载' : '下载到本地',
+                                    icon: busy
+                                        ? const SizedBox.square(
+                                            dimension: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : Icon(
+                                            downloaded
+                                                ? Icons
+                                                      .file_download_done_rounded
+                                                : Icons.download_outlined,
+                                          ),
+                                    onPressed: busy || downloaded
+                                        ? null
+                                        : () {
+                                            AppLogger.userAction(
+                                              'toggle_episode_download',
+                                              area: 'download',
+                                              data: {
+                                                'episodeId': episode.id,
+                                                'title': episode.title,
+                                                'downloaded': downloaded,
+                                              },
+                                            );
+                                            _toggleDownload(episode);
+                                          },
+                                  ),
+                                  _SeriesEpisodePlayButton(
+                                    episode: episode,
+                                    loading: _loadingEpisodes,
+                                    onPlay: () => _playEpisode(episode),
+                                    onPause: () => _pauseEpisode(episode),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -618,11 +587,6 @@ class _SeriesDetailPageState extends ConsumerState<SeriesDetailPage> {
   List<Episode> _mergeEpisodes(List<Episode> current, List<Episode> incoming) {
     final seen = current.map((episode) => episode.id).toSet();
     return [...current, ...incoming.where((episode) => seen.add(episode.id))];
-  }
-
-  String _episodeCountText(Series series, List<Episode> episodes) {
-    if (_usesRemoteEpisodePages(series)) return '已加载 ${episodes.length} 集';
-    return '${episodes.length} / ${series.episodes.length} 集';
   }
 
   String _episodeSectionSubtitle(Series series, List<Episode> episodes) {
@@ -740,31 +704,6 @@ class _LoadMoreEpisodesButton extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         onPressed: loading ? null : onPressed,
-      ),
-    );
-  }
-}
-
-class _SeriesCover extends StatelessWidget {
-  const _SeriesCover({this.url, this.circular = false});
-
-  final String? url;
-  final bool circular;
-
-  @override
-  Widget build(BuildContext context) {
-    final radius = circular ? 54.0 : 8.0;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: SizedBox.square(
-        dimension: 108,
-        child: CachedCoverImage(
-          url: url,
-          placeholderBuilder: (context) => ColoredBox(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: Icon(circular ? Icons.person : Icons.podcasts, size: 40),
-          ),
-        ),
       ),
     );
   }

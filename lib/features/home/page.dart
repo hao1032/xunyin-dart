@@ -45,7 +45,7 @@ class _MainShellPageState extends ConsumerState<MainShellPage> {
             NavigationDestination(
               icon: Icon(Icons.queue_music_outlined),
               selectedIcon: Icon(Icons.queue_music_rounded),
-              label: '列表',
+              label: '播放',
             ),
             NavigationDestination(
               icon: Icon(Icons.explore_outlined),

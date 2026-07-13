@@ -97,7 +97,7 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
                           ),
                           IconButton(
                             tooltip: '已下载',
-                            icon: const Icon(Icons.offline_pin),
+                            icon: const Icon(Icons.file_download_done_rounded),
                             onPressed: null,
                           ),
                           IconButton(

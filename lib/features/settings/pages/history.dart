@@ -134,7 +134,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                                 )
                               : Icon(
                                   downloaded
-                                      ? Icons.offline_pin
+                                      ? Icons.file_download_done_rounded
                                       : Icons.download_outlined,
                                 ),
                           onPressed: busy || downloaded

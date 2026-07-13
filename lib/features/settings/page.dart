@@ -46,7 +46,7 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
                 AppActionCard(
-                  icon: Icons.download_done_rounded,
+                  icon: Icons.file_download_done_rounded,
                   title: '下载',
                   subtitle: '查看和删除已下载单集',
                   onTap: () {

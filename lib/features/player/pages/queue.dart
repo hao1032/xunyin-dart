@@ -32,7 +32,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
     final queue = ref.watch(playbackQueueProvider);
     final player = ref.watch(appPlayerProvider);
     return Scaffold(
-      appBar: const AppPageBar(title: '播放列表'),
+      appBar: const AppPageBar(title: '播放'),
       body: Column(
         children: [
           Expanded(

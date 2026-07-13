@@ -7,7 +7,7 @@ import '../../../core/app_logger.dart';
 import '../../../core/display_formatters.dart';
 import '../../../core/app_layout.dart';
 import '../../../shared/wigets/app_bar.dart';
-import '../../../shared/wigets/cached_cover_image.dart';
+import '../../../shared/wigets/app_detail.dart';
 import '../../episode/model.dart';
 import '../../episode/series_resolver.dart';
 import '../../series/model.dart';
@@ -35,67 +35,72 @@ class PlayerPage extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _PlayerCover(url: episode.imageUrl),
-                      const SizedBox(height: 22),
-                      Text(
-                        episode.title,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      _PodcastLink(
-                        episode: episode,
-                        queue: queue,
-                        onTap: () => _openSeries(context, ref, episode, queue),
-                      ),
-                      const SizedBox(height: 24),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 14, 12, 18),
-                          child: _PlayerProgress(player: player),
+                      AppDetail(
+                        title: episode.title,
+                        coverUrl: episode.imageUrl,
+                        coverIcon: Icons.music_note,
+                        subtitle: _PodcastLink(
+                          episode: episode,
+                          queue: queue,
+                          onTap: () =>
+                              _openSeries(context, ref, episode, queue),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      StreamBuilder<PlayerState>(
-                        stream: player.playerStateStream,
-                        builder: (context, snapshot) {
-                          final playing = snapshot.data?.playing ?? false;
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton.filledTonal(
-                                tooltip: '后退 15 秒',
-                                iconSize: 26,
-                                icon: const Icon(Icons.replay_10),
-                                onPressed: () => _seekRelative(player, -15),
+                        children: [
+                          const SizedBox(height: 24),
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                12,
+                                14,
+                                12,
+                                18,
                               ),
-                              const SizedBox(width: 24),
-                              IconButton.filled(
-                                tooltip: playing ? '暂停' : '播放',
-                                iconSize: 38,
-                                icon: Icon(
-                                  playing ? Icons.pause : Icons.play_arrow,
-                                ),
-                                onPressed: () {
-                                  AppLogger.userAction(
-                                    playing
-                                        ? 'pause_from_player'
-                                        : 'play_from_player',
-                                    area: 'player',
-                                  );
-                                  playing ? player.pause() : player.play();
-                                },
-                              ),
-                              const SizedBox(width: 24),
-                              IconButton.filledTonal(
-                                tooltip: '前进 15 秒',
-                                iconSize: 26,
-                                icon: const Icon(Icons.forward_10),
-                                onPressed: () => _seekRelative(player, 15),
-                              ),
-                            ],
-                          );
-                        },
+                              child: _PlayerProgress(player: player),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          StreamBuilder<PlayerState>(
+                            stream: player.playerStateStream,
+                            builder: (context, snapshot) {
+                              final playing = snapshot.data?.playing ?? false;
+                              return Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton.filledTonal(
+                                    tooltip: '后退 15 秒',
+                                    iconSize: 26,
+                                    icon: const Icon(Icons.replay_10),
+                                    onPressed: () => _seekRelative(player, -15),
+                                  ),
+                                  const SizedBox(width: 24),
+                                  IconButton.filled(
+                                    tooltip: playing ? '暂停' : '播放',
+                                    iconSize: 38,
+                                    icon: Icon(
+                                      playing ? Icons.pause : Icons.play_arrow,
+                                    ),
+                                    onPressed: () {
+                                      AppLogger.userAction(
+                                        playing
+                                            ? 'pause_from_player'
+                                            : 'play_from_player',
+                                        area: 'player',
+                                      );
+                                      playing ? player.pause() : player.play();
+                                    },
+                                  ),
+                                  const SizedBox(width: 24),
+                                  IconButton.filledTonal(
+                                    tooltip: '前进 15 秒',
+                                    iconSize: 26,
+                                    icon: const Icon(Icons.forward_10),
+                                    onPressed: () => _seekRelative(player, 15),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -158,42 +163,6 @@ class PlayerPage extends ConsumerWidget {
   }
 }
 
-class _PlayerCover extends StatelessWidget {
-  const _PlayerCover({required this.url});
-
-  final String? url;
-
-  @override
-  Widget build(BuildContext context) {
-    final screenSize = MediaQuery.sizeOf(context);
-    final maxHeight = (screenSize.height * 0.32).clamp(150.0, 280.0);
-    final maxWidth = (screenSize.width - 48).clamp(0.0, 520.0);
-    final placeholderHeight = maxHeight.clamp(140.0, maxWidth * 0.62);
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: CachedCoverImage(
-            url: url,
-            fit: BoxFit.contain,
-            decodeLogicalSize: Size(maxWidth, maxHeight),
-            placeholderBuilder: (context) => SizedBox(
-              width: maxWidth,
-              height: placeholderHeight,
-              child: ColoredBox(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: const Icon(Icons.podcasts, size: 56),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _PodcastLink extends StatelessWidget {
   const _PodcastLink({
     required this.episode,
@@ -208,7 +177,8 @@ class _PodcastLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = _podcastName();
-    return Center(
+    return Align(
+      alignment: Alignment.centerLeft,
       child: TextButton.icon(
         icon: const Icon(Icons.podcasts, size: 18),
         label: Text('播客：$name'),

@@ -8,7 +8,7 @@ import '../../core/display_formatters.dart';
 import '../../core/plain_text.dart';
 import '../../core/app_layout.dart';
 import '../../shared/wigets/app_bar.dart';
-import '../../shared/wigets/cached_cover_image.dart';
+import '../../shared/wigets/app_detail.dart';
 import '../downloads/repository.dart';
 import '../downloads/model.dart';
 import '../player/services/playback_queue.dart';
@@ -156,127 +156,94 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: AspectRatio(
-                          aspectRatio: 1,
-                          child: CachedCoverImage(
-                            url: episode.imageUrl,
-                            placeholderBuilder: (context) => ColoredBox(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                              child: const Icon(Icons.podcasts, size: 72),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        episode.title,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      if (metaParts.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          metaParts.join(' · '),
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                      if (relatedSeries.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        _RelatedSeriesLinks(
-                          episode: episode,
-                          series: relatedSeries,
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          episode.author ?? episode.sourceType.label,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                      ],
-                      const SizedBox(height: 22),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: FilledButton.icon(
-                              icon: Icon(
-                                isQueued
-                                    ? Icons.playlist_add_check_rounded
-                                    : Icons.playlist_add,
-                              ),
-                              label: Text(isQueued ? '已加入' : '加入列表'),
-                              onPressed: isQueued
-                                  ? null
-                                  : () {
-                                      AppLogger.userAction(
-                                        'add_episode_to_queue',
-                                        area: 'player',
-                                        data: {
-                                          'episodeId': episode.id,
-                                          'title': episode.title,
-                                        },
-                                      );
-                                      ref
-                                          .read(playbackQueueProvider.notifier)
-                                          .add(episode);
-                                      ScaffoldMessenger.of(
+                      AppDetail(
+                        title: episode.title,
+                        coverUrl: episode.imageUrl,
+                        coverIcon: Icons.music_note,
+                        metadata: metaParts.join(' · '),
+                        subtitle: relatedSeries.isNotEmpty
+                            ? _RelatedSeriesLinks(
+                                episode: episode,
+                                series: relatedSeries,
+                              )
+                            : Text(
+                                episode.author ?? episode.sourceType.label,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: Theme.of(
                                         context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('已加入播放列表'),
-                                        ),
-                                      );
-                                    },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton.filledTonal(
-                            tooltip: _downloadTooltip(),
-                            icon: _downloadIcon(),
-                            onPressed:
-                                _checkingDownload ||
-                                    _caching ||
-                                    _downloadedEpisode != null
-                                ? null
-                                : _downloadEpisode,
-                          ),
-                          const SizedBox(width: 8),
-                          _EpisodePlayButton(
-                            loading: _loading,
-                            isCurrent: isCurrent,
-                            onPlay: _play,
-                            onPause: _pause,
-                          ),
-                        ],
-                      ),
-                      if (_downloadedEpisode != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          '已下载 ${_formatBytes(_downloadedEpisode!.bytes)}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                      ).colorScheme.primary,
+                                    ),
                               ),
+                        actions: Row(
+                          children: [
+                            Expanded(
+                              child: FilledButton.icon(
+                                icon: Icon(
+                                  isQueued
+                                      ? Icons.playlist_add_check_rounded
+                                      : Icons.playlist_add,
+                                ),
+                                label: Text(isQueued ? '已加入' : '加入列表'),
+                                onPressed: isQueued
+                                    ? null
+                                    : () {
+                                        AppLogger.userAction(
+                                          'add_episode_to_queue',
+                                          area: 'player',
+                                          data: {
+                                            'episodeId': episode.id,
+                                            'title': episode.title,
+                                          },
+                                        );
+                                        ref
+                                            .read(
+                                              playbackQueueProvider.notifier,
+                                            )
+                                            .add(episode);
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('已加入播放列表'),
+                                          ),
+                                        );
+                                      },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton.filledTonal(
+                              tooltip: _downloadTooltip(),
+                              icon: _downloadIcon(),
+                              onPressed:
+                                  _checkingDownload ||
+                                      _caching ||
+                                      _downloadedEpisode != null
+                                  ? null
+                                  : _downloadEpisode,
+                            ),
+                            const SizedBox(width: 8),
+                            _EpisodePlayButton(
+                              loading: _loading,
+                              isCurrent: isCurrent,
+                              onPlay: _play,
+                              onPause: _pause,
+                            ),
+                          ],
                         ),
-                      ],
-                      if (description != null) ...[
-                        const SizedBox(height: AppSpacing.section),
-                        const AppSectionTitle(title: '简介'),
-                        const SizedBox(height: 10),
-                        Text(description, style: const TextStyle(height: 1.6)),
-                      ],
+                        actionStatus: _downloadedEpisode == null
+                            ? null
+                            : Text(
+                                '已下载 ${_formatBytes(_downloadedEpisode!.bytes)}',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                        description: description,
+                      ),
                     ],
                   ),
                 ),
@@ -296,7 +263,9 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
       );
     }
     return Icon(
-      _downloadedEpisode == null ? Icons.download : Icons.offline_pin,
+      _downloadedEpisode == null
+          ? Icons.download
+          : Icons.file_download_done_rounded,
     );
   }
 
