@@ -112,7 +112,7 @@ abstract final class AppText {
   static const settingsTitle = '设置';
   static const discoverTitle = '发现';
   static const nowPlayingTitle = '正在播放';
-  static const playlistTitle = '播放列表';
+  static const playlistTitle = '播放';
   static const descriptionTitle = '简介';
   static const episodesTitle = '单集';
   static const retry = '重试';
