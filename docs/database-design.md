@@ -12,7 +12,7 @@
 - 同一远端单集可独立出现一次，也可在每个 series 上下文中各出现一次。
 - B 站和 RSS 是内容来源类型。Apple Podcasts 仅是发现来源，最终解析为 RSS，不作为持久化内容来源。
 
-所有时间字段均使用 UTC Unix 毫秒时间戳。布尔值使用 SQLite 整数值（`0` 与 `1`）。
+时间字段在 Dart 中使用 `DateTime`，Drift 默认以 UTC Unix 秒级时间戳保存到 SQLite。布尔值在 Dart 中使用 `bool`，Drift 保存为 SQLite 整数值（`0` 与 `1`）。
 
 ## 数据表
 
@@ -69,6 +69,7 @@ CREATE TABLE episodes (
   audio_url TEXT,
   video_url TEXT,
   duration_ms INTEGER,
+  audio_bytes INTEGER,
   published_at INTEGER,
 
   bilibili_bvid TEXT,
@@ -93,12 +94,14 @@ CREATE TABLE downloads (
     CHECK (source_type IN ('bilibili', 'rss')),
   source_episode_id TEXT NOT NULL,
 
-  file_path TEXT NOT NULL,
-  bytes INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'complete'
+  -- 下载完成前为空；完成后为本地媒体文件路径。
+  file_path TEXT,
+  -- 实际写入本地文件的字节数；下载完成前为空。
+  bytes INTEGER,
+  status TEXT NOT NULL DEFAULT 'downloading'
     CHECK (status IN ('downloading', 'complete', 'failed')),
   error_message TEXT,
-  downloaded_at INTEGER NOT NULL,
+  downloaded_at INTEGER,
 
   UNIQUE (source_type, source_episode_id)
 );
@@ -137,7 +140,9 @@ repository 在事务中分配和重排 `sort_order`。顶级 series 与独立 ep
 - B 站 `source_episode_id` 使用 `"$bvid:$cid"`；视频的每个分 P 都有独立的 `cid`。B 站专用字段保留用于解析播放流的原始 ID。
 - RSS `source_episode_id` 优先使用 feed 的 `guid`，缺失时使用 enclosure URL 的稳定哈希。
 - `audio_url` 与 `video_url` 是可选的已解析播放地址。RSS 地址通常可以持久化；B 站地址可能过期，播放时仍需通过 `bilibili_bvid` 和 `bilibili_cid` 解析新地址。
+- `episodes.audio_bytes` 是远端音频声明的大小，例如 RSS enclosure 的 `length`；它可为空且不保证与实际下载大小一致。`downloads.bytes` 是实际写入本地文件的大小。
 - 下载以来源身份而不是本地 `episodes.id` 为键，因此独立单集和 series 内单集可以复用同一个本地文件。
+- 下载开始时创建 `downloads` 记录，状态为 `downloading`；成功后写入 `file_path`、`bytes`、`downloaded_at` 并改为 `complete`；失败时改为 `failed` 并写入 `error_message`。
 - series 最近播放的单集通过 `WHERE series_id = ? ORDER BY last_played_at DESC LIMIT 1` 查询，不在 `series` 中重复存储。
 - 播放达到完成阈值时设置 `is_completed`，用于完成状态展示、断点续播和后续筛选。
 
@@ -147,6 +152,24 @@ repository 在事务中分配和重排 `sort_order`。顶级 series 与独立 ep
 
 删除 series 时会级联删除其 episode 上下文。`downloads` 不关联 episode 外键，repository 必须清理不再被任一 episode 上下文引用的下载记录和本地文件。
 
-## 后续讨论
+## Drift 实现约定
 
-下一次讨论将基于该结构定义 Drift 数据库类、repository 与 Riverpod provider。
+第一版 Drift 数据库的源码结构如下：
+
+```text
+lib/
+  core/database/
+    app_database.dart         # AppDatabase、schema 版本、迁移与索引。
+    database_connection.dart  # 生产环境 SQLite 连接。
+  features/
+    series/table.dart         # series 表。
+    episode/table.dart        # episodes 表。
+    downloads/table.dart      # downloads 表。
+```
+
+- 数据库文件名为 `xunyin.sqlite`，由 `drift_flutter` 保存到操作系统提供的应用私有数据目录，不纳入 Git。
+- `AppDatabase` 的 `schemaVersion` 从 `1` 开始；不导入旧 JSON 数据。
+- 三张表使用 SQLite 自增整数 `id` 作为主键。`episodes.series_id` 是可空外键，删除 series 时级联删除其子单集。
+- 部分唯一索引与排序索引通过建库时的自定义 SQL 创建；顶级跨表排序的唯一性仍由后续 Repository 在事务中维护。
+- Drift 的 `app_database.g.dart` 是生成代码，纳入 Git；修改表定义后需要运行 `dart run build_runner build`。
+- 本阶段只建立数据库基础设施。Repository、Riverpod Provider、页面迁移与旧 JSON 删除将在后续阶段实现。
