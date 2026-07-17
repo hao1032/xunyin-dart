@@ -4,14 +4,20 @@ import '../../features/downloads/table.dart';
 import '../../features/episode/table.dart';
 import '../../features/series/table.dart';
 import 'database_connection.dart';
+import '../logging/app_logger.dart';
 
 part 'app_database.g.dart';
 
 @DriftDatabase(tables: [SeriesTable, EpisodesTable, DownloadsTable])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(openDatabaseConnection());
+  AppDatabase({AppLogger? logger})
+    : _logger = logger ?? createAppLogger(),
+      super(openDatabaseConnection());
 
-  AppDatabase.forTesting(super.executor);
+  AppDatabase.forTesting(super.executor, {AppLogger? logger})
+    : _logger = logger ?? const NoopAppLogger();
+
+  final AppLogger _logger;
 
   @override
   int get schemaVersion => 1;
@@ -20,8 +26,24 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (migrator) async {
-        await migrator.createAll();
-        await _createIndexes();
+        try {
+          await migrator.createAll();
+          await _createIndexes();
+          _logger.info(
+            'database',
+            'schema_created',
+            data: {'version': schemaVersion},
+          );
+        } catch (error, stackTrace) {
+          _logger.error(
+            'database',
+            'schema_create_failed',
+            error: error,
+            stackTrace: stackTrace,
+            data: {'version': schemaVersion},
+          );
+          Error.throwWithStackTrace(error, stackTrace);
+        }
       },
       beforeOpen: (details) async {
         await customStatement('PRAGMA foreign_keys = ON');
