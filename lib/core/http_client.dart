@@ -46,7 +46,7 @@ class _HttpLogInterceptor extends Interceptor {
   @override
   void onError(DioException error, ErrorInterceptorHandler handler) {
     final options = error.requestOptions;
-    _logger.warning(
+    _logger.error(
       'http',
       'request_failed',
       error: error,

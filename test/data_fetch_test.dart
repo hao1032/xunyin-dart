@@ -36,6 +36,59 @@ void main() {
     expect(result.single.publishedAt, isNotNull);
   });
 
+  test('解析 B 站单集详情和所属合集', () async {
+    final dio = Dio()
+      ..httpClientAdapter = _JsonAdapter({
+        'data': {
+          'bvid': 'BVdetail',
+          'title': '详情',
+          'desc': '说明',
+          'pic': '//image.test/detail.jpg',
+          'owner': {'mid': 123, 'name': 'UP主'},
+          'ugc_season': {
+            'id': 99,
+            'name': '合集',
+            'sections': [
+              {
+                'episodes': [
+                  {'bvid': 'BVepisode', 'title': '合集单集'},
+                ],
+              },
+            ],
+          },
+        },
+      });
+    final detail = await BilibiliClient(
+      dio,
+      const NoopAppLogger(),
+    ).getVideoDetail('BVdetail');
+    expect(detail.ownerMid, 123);
+    expect(detail.ownerName, 'UP主');
+    expect(detail.collectionId, 99);
+    expect(detail.collectionVideos.single.bvid, 'BVepisode');
+  });
+
+  test('解析 B 站合集视频列表', () async {
+    final dio = Dio()
+      ..httpClientAdapter = _RoutingAdapter({
+        '/x/polymer/web-space/seasons_archives_list': {
+          'data': {
+            'archives': [
+              {'bvid': 'BVcollection', 'title': '合集视频', 'author': 'UP主'},
+            ],
+          },
+        },
+      });
+    final client = BilibiliClient(dio, const NoopAppLogger());
+    expect(
+      (await client.getCollectionVideos(
+        mid: 123,
+        collectionId: 99,
+      )).single.bvid,
+      'BVcollection',
+    );
+  });
+
   test('解析 Apple Podcasts 搜索结果', () async {
     final dio = Dio()
       ..httpClientAdapter = _JsonAdapter({
@@ -129,5 +182,29 @@ class _JsonAdapter implements HttpClientAdapter {
       return value.toString();
     }
     return '"${value.toString().replaceAll('"', '\\"')}"';
+  }
+}
+
+class _RoutingAdapter implements HttpClientAdapter {
+  _RoutingAdapter(this.responses);
+  final Map<String, Object> responses;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final body = responses[options.uri.path] ?? <String, Object>{};
+    return ResponseBody.fromString(
+      _JsonAdapter._encode(body),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
   }
 }

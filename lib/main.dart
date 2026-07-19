@@ -91,6 +91,10 @@ class _DataDebugPageState extends State<DataDebugPage> {
   final _bilibiliKeyword = TextEditingController();
   final _podcastKeyword = TextEditingController();
   List<BilibiliSearchResult> _videos = const [];
+  BilibiliVideoDetail? _bilibiliDetail;
+  List<BilibiliVideo> _collectionVideos = const [];
+  bool _loadingCollection = false;
+  String? _relatedError;
   List<ApplePodcastResult> _podcasts = const [];
   RssFeed? _feed;
   String? _error;
@@ -132,6 +136,35 @@ class _DataDebugPageState extends State<DataDebugPage> {
     await _run(() async => _feed = await _rss.loadFeed(url));
   }
 
+  Future<void> _loadBilibiliDetail(String bvid) async {
+    await _run(() async {
+      _bilibiliDetail = await _bilibili.getVideoDetail(bvid);
+      _collectionVideos = const [];
+      _relatedError = null;
+    });
+  }
+
+  Future<void> _loadCollectionVideos() async {
+    final detail = _bilibiliDetail;
+    final collectionId = detail?.collectionId;
+    if (detail == null || collectionId == null || _loadingCollection) return;
+    setState(() {
+      _loadingCollection = true;
+      _relatedError = null;
+    });
+    try {
+      final videos = await _bilibili.getCollectionVideos(
+        mid: detail.ownerMid,
+        collectionId: collectionId,
+      );
+      if (mounted) setState(() => _collectionVideos = videos);
+    } catch (error) {
+      if (mounted) setState(() => _relatedError = error.toString());
+    } finally {
+      if (mounted) setState(() => _loadingCollection = false);
+    }
+  }
+
   Future<void> _run(Future<void> Function() operation) async {
     setState(() {
       _loading = true;
@@ -171,11 +204,54 @@ class _DataDebugPageState extends State<DataDebugPage> {
                               '${formatDate(video.publishedAt)}  '
                               '${formatDuration(video.durationSeconds)}',
                             ),
+                            onTap: () => _loadBilibiliDetail(video.bvid),
                           ),
                         )
                         .toList(),
                   ),
           ),
+          if (_bilibiliDetail != null) ...[
+            const Divider(height: 32),
+            Text(
+              '单集详情：${_bilibiliDetail!.title}',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            Text(
+              'UP主：${_bilibiliDetail!.ownerName}（${_bilibiliDetail!.ownerMid}）',
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                FilledButton(
+                  onPressed:
+                      _bilibiliDetail!.collectionId == null ||
+                          _loadingCollection
+                      ? null
+                      : _loadCollectionVideos,
+                  child: Text(_loadingCollection ? '加载中…' : '加载所属合集视频'),
+                ),
+              ],
+            ),
+            if (!_bilibiliDetail!.isCollection) const Text('该单集不属于合集或分P'),
+            if (_bilibiliDetail!.pages.isNotEmpty) ...[
+              const Text('分P列表'),
+              ..._bilibiliDetail!.pages.map(
+                (page) => Text(
+                  '${page.page}. ${page.part.isEmpty ? '未命名分P' : page.part} · ${formatDuration(page.durationSeconds)}',
+                ),
+              ),
+            ],
+            if (_collectionVideos.isNotEmpty) ...[
+              const Text('所属合集视频'),
+              ..._collectionVideos.take(20).map(_relatedTile),
+            ],
+            if (_relatedError != null)
+              Text(
+                _relatedError!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+          ],
           const Divider(height: 32),
           _SearchSection(
             title: 'Apple Podcasts 搜索',
@@ -230,6 +306,15 @@ class _DataDebugPageState extends State<DataDebugPage> {
       ),
     );
   }
+
+  Widget _relatedTile(BilibiliVideo video) => ListTile(
+    dense: true,
+    title: Text(video.title),
+    subtitle: Text(
+      '${video.author}  ${video.bvid}\n'
+      '${formatDate(video.publishedAt)}  ${formatDuration(video.durationSeconds)}',
+    ),
+  );
 }
 
 class _SearchSection extends StatelessWidget {
