@@ -8,18 +8,22 @@ import 'core/logging/logger_provider.dart';
 import 'core/http_client.dart';
 import 'core/utils.dart';
 import 'features/bilibili/client.dart';
+import 'features/bilibili/login_page.dart';
+import 'features/bilibili/session_store.dart';
 import 'features/podcast/client.dart';
 import 'features/podcast/models.dart';
 
 void main() {
   final logger = createAppLogger();
   final dio = createHttpClient(logger);
+  final bilibiliSession = BilibiliSessionStore(dio, logger);
   _installGlobalErrorLogging(logger);
   runApp(
     ProviderScope(
       overrides: [appLoggerProvider.overrideWithValue(logger)],
       child: XunyinApp(
-        bilibili: BilibiliClient(dio, logger),
+        bilibili: BilibiliClient(dio, logger, sessionStore: bilibiliSession),
+        bilibiliSession: bilibiliSession,
         apple: ApplePodcastClient(dio, logger),
         rss: RssClient(dio, logger),
       ),
@@ -54,21 +58,145 @@ void _installGlobalErrorLogging(AppLogger logger) {
 class XunyinApp extends StatelessWidget {
   const XunyinApp({
     required this.bilibili,
+    required this.bilibiliSession,
     required this.apple,
     required this.rss,
     super.key,
   });
 
   final BilibiliClient bilibili;
+  final BilibiliSessionStore bilibiliSession;
   final ApplePodcastClient apple;
   final RssClient rss;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: DataDebugPage(bilibili: bilibili, apple: apple, rss: rss),
+      home: AppNavigationShell(
+        bilibili: bilibili,
+        bilibiliSession: bilibiliSession,
+        apple: apple,
+        rss: rss,
+      ),
     );
   }
+}
+
+class AppNavigationShell extends StatefulWidget {
+  const AppNavigationShell({
+    required this.bilibili,
+    required this.bilibiliSession,
+    required this.apple,
+    required this.rss,
+    super.key,
+  });
+
+  final BilibiliClient bilibili;
+  final BilibiliSessionStore bilibiliSession;
+  final ApplePodcastClient apple;
+  final RssClient rss;
+
+  @override
+  State<AppNavigationShell> createState() => _AppNavigationShellState();
+}
+
+class _AppNavigationShellState extends State<AppNavigationShell> {
+  var _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      const _EmptyTabPage(title: '播放列表'),
+      const _EmptyTabPage(title: '发现'),
+      _SettingsPage(
+        bilibili: widget.bilibili,
+        bilibiliSession: widget.bilibiliSession,
+        apple: widget.apple,
+        rss: widget.rss,
+      ),
+    ];
+    return Scaffold(
+      body: pages[_selectedIndex],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) =>
+            setState(() => _selectedIndex = index),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.queue_music_outlined),
+            selectedIcon: Icon(Icons.queue_music),
+            label: '播放列表',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore),
+            label: '发现',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: '设置',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyTabPage extends StatelessWidget {
+  const _EmptyTabPage({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title)),
+    body: const SizedBox.expand(),
+  );
+}
+
+class _SettingsPage extends StatelessWidget {
+  const _SettingsPage({
+    required this.bilibili,
+    required this.bilibiliSession,
+    required this.apple,
+    required this.rss,
+  });
+
+  final BilibiliClient bilibili;
+  final BilibiliSessionStore bilibiliSession;
+  final ApplePodcastClient apple;
+  final RssClient rss;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('设置')),
+    body: ListView(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.bug_report_outlined),
+          title: const Text('数据获取调试'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  DataDebugPage(bilibili: bilibili, apple: apple, rss: rss),
+            ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.login),
+          title: const Text('B站登录'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BilibiliLoginPage(sessionStore: bilibiliSession),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class DataDebugPage extends StatefulWidget {

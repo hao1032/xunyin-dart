@@ -4,17 +4,20 @@ import '../../core/exceptions.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/utils.dart';
 import 'models.dart';
+import 'session_store.dart';
 
 export 'models.dart';
 
 class BilibiliClient {
-  BilibiliClient(this._dio, this._logger);
+  BilibiliClient(this._dio, this._logger, {this.sessionStore});
 
   final Dio _dio;
   final AppLogger _logger;
+  final BilibiliSessionStore? sessionStore;
   static const _baseUrl = 'https://api.bilibili.com';
+  Future<Map<String, String>>? _anonymousCookiesFuture;
 
-  Options get _options => Options(
+  Future<Options> get _options async => Options(
     headers: {
       'User-Agent':
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
@@ -22,6 +25,10 @@ class BilibiliClient {
       'Referer': 'https://www.bilibili.com/',
       'Origin': 'https://www.bilibili.com',
       'Accept': 'application/json, text/plain, */*',
+      'Cookie': BilibiliSessionStore.cookieHeader({
+        ...await _anonymousCookies(),
+        ...await _sessionCookies(),
+      }),
     },
   );
 
@@ -31,9 +38,17 @@ class BilibiliClient {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$_baseUrl/x/web-interface/search/type',
-        queryParameters: {'search_type': 'video', 'keyword': value, 'page': 1},
-        options: _options,
+        queryParameters: {
+          'search_type': 'video',
+          'keyword': value,
+          'page': 1,
+          'order_type': 'totalrank',
+          // Bilibili rejects values above 50 with API code -400.
+          'page_size': '50',
+        },
+        options: await _options,
       );
+      await _ensureLoggedIn(response.data);
       final rows = response.data?['data']?['result'];
       if (rows is! List) return const [];
       final result = rows
@@ -76,8 +91,9 @@ class BilibiliClient {
       final response = await _dio.get<Map<String, dynamic>>(
         '$_baseUrl/x/web-interface/view',
         queryParameters: {'bvid': bvid},
-        options: _options,
+        options: await _options,
       );
+      await _ensureLoggedIn(response.data);
       final data = response.data?['data'];
       if (data is! Map) throw const FormatException('missing detail data');
       final owner = data['owner'] is Map ? data['owner'] as Map : const {};
@@ -132,8 +148,9 @@ class BilibiliClient {
           'page_num': page,
           'page_size': pageSize,
         },
-        options: _options,
+        options: await _options,
       );
+      await _ensureLoggedIn(response.data);
       final rows = response.data?['data']?['archives'];
       return rows is List
           ? rows.whereType<Map>().map(_video).toList()
@@ -193,5 +210,53 @@ class BilibiliClient {
             seconds * 1000,
             isUtc: true,
           ).toLocal();
+  }
+
+  Future<Map<String, String>> _sessionCookies() async {
+    final store = sessionStore;
+    return store == null ? const {} : store.cookies();
+  }
+
+  Future<Map<String, String>> _anonymousCookies() {
+    return _anonymousCookiesFuture ??= _loadAnonymousCookies();
+  }
+
+  Future<Map<String, String>> _loadAnonymousCookies() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$_baseUrl/x/frontend/finger/spi',
+        options: Options(
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/',
+          },
+        ),
+      );
+      final data = response.data?['data'];
+      if (data is! Map) return const {};
+      return {
+        if (data['b_3'] is String && (data['b_3'] as String).isNotEmpty)
+          'buvid3': data['b_3'] as String,
+        if (data['b_4'] is String && (data['b_4'] as String).isNotEmpty)
+          'buvid4': data['b_4'] as String,
+      };
+    } on DioException catch (error, stackTrace) {
+      _logger.warning(
+        'bilibili',
+        'anonymous_cookie_failed',
+        error: error,
+        stackTrace: stackTrace,
+        data: {'status_code': error.response?.statusCode},
+      );
+      return const {};
+    }
+  }
+
+  Future<void> _ensureLoggedIn(Map<String, dynamic>? body) async {
+    if (body?['code'] != -101) return;
+    await sessionStore?.clear();
+    throw const DataFetchException('B站登录已失效，请重新登录');
   }
 }
