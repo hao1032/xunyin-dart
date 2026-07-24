@@ -10,6 +10,9 @@ import 'core/utils.dart';
 import 'features/bilibili/client.dart';
 import 'features/bilibili/login_page.dart';
 import 'features/bilibili/session_store.dart';
+import 'features/discovery/apple_podcast_source.dart';
+import 'features/discovery/bilibili_source.dart';
+import 'features/discovery/page.dart';
 import 'features/podcast/client.dart';
 import 'features/podcast/models.dart';
 
@@ -107,7 +110,12 @@ class _AppNavigationShellState extends State<AppNavigationShell> {
   Widget build(BuildContext context) {
     final pages = [
       const _EmptyTabPage(title: '播放列表'),
-      const _EmptyTabPage(title: '发现'),
+      DiscoveryPage(
+        sources: [
+          BilibiliDiscoverySource(widget.bilibili),
+          ApplePodcastDiscoverySource(widget.apple, widget.rss),
+        ],
+      ),
       _SettingsPage(
         bilibili: widget.bilibili,
         bilibiliSession: widget.bilibiliSession,

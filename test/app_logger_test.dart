@@ -6,6 +6,14 @@ import 'package:xunyin_dart/core/http_client.dart';
 import 'package:xunyin_dart/core/logging/app_logger.dart';
 
 void main() {
+  test('共享 HTTP 客户端配置请求超时', () {
+    final options = createHttpClient(const NoopAppLogger()).options;
+
+    expect(options.connectTimeout, const Duration(seconds: 15));
+    expect(options.sendTimeout, const Duration(seconds: 15));
+    expect(options.receiveTimeout, const Duration(seconds: 15));
+  });
+
   test('Debug logger 输出等级、上下文和异常堆栈', () {
     final messages = <String>[];
     final logger = DebugAppLogger(output: messages.add);

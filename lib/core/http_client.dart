@@ -2,11 +2,19 @@ import 'package:dio/dio.dart';
 
 import 'logging/app_logger.dart';
 
+const _requestTimeout = Duration(seconds: 15);
+
 /// 创建应用共用的 HTTP 客户端。
 ///
 /// 仅在 logger 启用时附加脱敏请求日志；不记录请求/响应正文和请求头。
 Dio createHttpClient(AppLogger logger, {BaseOptions? options}) {
-  final dio = Dio(options);
+  final dio = Dio(
+    (options ?? BaseOptions()).copyWith(
+      connectTimeout: _requestTimeout,
+      sendTimeout: _requestTimeout,
+      receiveTimeout: _requestTimeout,
+    ),
+  );
   if (logger.isEnabled) {
     dio.interceptors.add(_HttpLogInterceptor(logger));
   }
